@@ -982,10 +982,7 @@
   }
 
   function fetchAllDataFromGitHub() {
-    var currentSha = window.UB_COMMIT_SHA || '';
-    var reqUrl = apiEndpoint + (currentSha ? ('?v=' + currentSha) : ('?t=' + Date.now()));
-
-    fetch(reqUrl)
+    fetch(apiEndpoint)
       .then(function(res) {
         if (!res.ok) throw new Error('網路連線異常 (HTTP ' + res.status + ')');
         return res.json();
@@ -996,12 +993,8 @@
           try {
             sessionStorage.setItem(CACHE_KEY, JSON.stringify(allBrochures));
             sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-            if (currentSha) {
-              sessionStorage.setItem(CACHE_SHA_KEY, currentSha);
-            }
           } catch (e) {
             sessionStorage.removeItem(CACHE_KEY);
-            sessionStorage.removeItem(CACHE_SHA_KEY);
             sessionStorage.removeItem(CACHE_TIME_KEY);
           }
           checkUrlFavorites();
@@ -1041,17 +1034,11 @@
       });
     }
 
-    var currentSha = window.UB_COMMIT_SHA || '';
-    var cachedSha = sessionStorage.getItem(CACHE_SHA_KEY);
     var cachedData = sessionStorage.getItem(CACHE_KEY);
     var cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
     var now = Date.now();
 
-    var isCacheValid = currentSha
-      ? (cachedSha === currentSha && !!cachedData)
-      : (cachedData && cachedTime && (now - parseInt(cachedTime, 10) < CACHE_DURATION));
-
-    if (isCacheValid) {
+    if (cachedData && cachedTime && (now - parseInt(cachedTime, 10) < CACHE_DURATION)) {
       try {
         allBrochures = JSON.parse(cachedData);
         checkUrlFavorites();
@@ -1059,7 +1046,6 @@
         return;
       } catch (e) {
         sessionStorage.removeItem(CACHE_KEY);
-        sessionStorage.removeItem(CACHE_SHA_KEY);
         sessionStorage.removeItem(CACHE_TIME_KEY);
       }
     }
