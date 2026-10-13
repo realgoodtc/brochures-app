@@ -133,6 +133,7 @@
       d.files.forEach(function (f) { state.rows = state.rows.concat(expandFile(f)); });
       state.groups = buildGroups(state.rows);
       readUrlFavorites();
+      updateFavUI();
       renderFilterOptions();
       apply();
     }).catch(function (err) {
@@ -195,7 +196,7 @@
         '</span>' +
       '</div></div>' +
       '<div class="tb-row"><span class="tb-label">收藏</span><div class="tb-opts">' +
-        '<button type="button" class="tb-opt tb-opt-fav" id="tbFavBtn" aria-pressed="' + state.favOnly + '"' + (state.favOnly ? ' data-on' : '') + '>⭐ 只看我的收藏(<span id="tbFavCount">' + favorites.length + '</span>)</button>' +
+        '<button type="button" class="tb-opt tb-opt-fav" id="tbFavBtn" aria-pressed="' + state.favOnly + '"' + (state.favOnly ? ' data-on' : '') + '>⭐ 只看我的收藏(<span id="tbFavCount">' + favCount() + '</span>)</button>' +
         '<span class="tb-share"><span class="tb-share-label">分享收藏</span>' +
           '<button type="button" class="tb-icon tb-line" data-share="line" aria-label="用 LINE 分享收藏"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.448 24 10.304z"/></svg></button>' +
           '<button type="button" class="tb-icon tb-fb" data-share="fb" aria-label="用 Facebook 分享收藏"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></button>' +
@@ -286,7 +287,7 @@
   // ---------- 畫面 ----------
   function renderSummary() {
     var m = state.manifest;
-    var rows = filtered.reduce(function (n, f) { return n + f.rows.length; }, 0);
+    var rows = filtered.reduce(function (n, f) { return n + deptGroups(f.rows).length; }, 0);
     var years = {};
     (m ? m.channels : []).forEach(function (c) { years[c.academic_year] = true; });
     var updated = m && m.generated_at ? new Date(m.generated_at) : null;
@@ -322,33 +323,75 @@
     return s.replace(new RegExp('(' + pat + ')', 'gi'), '<mark>$1</mark>');
   }
 
-  function identityClass(id) { return id === '一般生' ? 'is-general' : 'is-special'; }
+  /** 今年的日期省略年份:10/07;其他年份 2025/12/12。 */
+  function fmtShort(s) {
+    s = String(s || '');
+    if (s.length !== 8) return '未定';
+    return (+s.slice(0, 4) === new Date().getFullYear() ? '' : s.slice(0, 4) + '/') + s.slice(4, 6) + '/' + s.slice(6);
+  }
 
-  function rowHtml(r, ts, g) {
-    var fav = favorites.indexOf(r.id) >= 0;
-    var open = !!state.expanded[r.id];
-    var exam = [r.stage1, r.stage2].filter(Boolean).join(' / ');
-    var st = (r.start !== g.start || r.end !== g.end) ? status(r.start, r.end) : null;
-    var detailId = 'tbd-' + r.id;
+  /** 同一學校的列依「系組 + 年級」合併:一般生與外加身分(退伍軍人等)放在同一列。 */
+  function deptGroups(rows) {
+    var map = {}, list = [];
+    rows.forEach(function (r) {
+      var k = r.department + '|' + r.grade;
+      if (!map[k]) { map[k] = { key: r.id, dept: r.department, grade: r.grade, rows: [] }; list.push(map[k]); }
+      map[k].rows.push(r);
+    });
+    list.forEach(function (d) {
+      d.rows.sort(function (a, b) { return (a.identity !== '一般生') - (b.identity !== '一般生'); });
+      d.ids = d.rows.map(function (r) { return r.id; });
+      d.remarks = [];
+      d.rows.forEach(function (r) {
+        String(r.remarks || '').split('\n').forEach(function (l) { l = l.trim(); if (l && d.remarks.indexOf(l) < 0) d.remarks.push(l); });
+      });
+    });
+    return list;
+  }
+
+  function quotaHtml(d) {
+    return d.rows.map(function (r) {
+      return r.identity === '一般生'
+        ? '<span class="tb-q"><span class="tb-num">' + esc(r.quota) + '</span><span class="tb-unit">名</span></span>'
+        : '<span class="tb-q tb-q-extra">' + esc(r.identity) + ' ' + esc(r.quota) + '</span>';
+    }).join('');
+  }
+
+  /** 考試項目:各身分相同時只列一次,不同時標出身分。 */
+  function examHtml(d, field) {
+    var vals = d.rows.map(function (r) { return r[field] || ''; });
+    var same = vals.every(function (v) { return v === vals[0]; });
+    if (same) return esc(vals[0] || '無');
+    return d.rows.map(function (r) { return '<span class="tb-id-label">' + esc(r.identity) + '</span>' + esc(r[field] || '無'); }).join('<br>');
+  }
+
+  function deptHtml(d, ts, g) {
+    var fav = d.ids.some(function (id) { return favorites.indexOf(id) >= 0; });
+    var open = !!state.expanded[d.key];
+    var r0 = d.rows[0];
+    var ownDate = r0.start !== g.start || r0.end !== g.end;
+    var detailId = 'tbd-' + d.key;
     return '<li class="tb-dept' + (open ? ' is-open' : '') + '">' +
       '<div class="tb-dept-main">' +
-        '<button type="button" class="tb-star' + (fav ? ' is-on' : '') + '" data-fav="' + esc(r.id) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(r.school + ' ' + r.department + ' ' + r.grade) + '">' + (fav ? '★' : '☆') + '</button>' +
-        '<div class="tb-dept-name">' + highlight(r.department, ts) +
-          (st ? '<span class="tb-dept-date">報名 ' + fmt(r.start) + '–' + fmt(r.end) + '</span>' : '') +
-          (r.remarks ? '<span class="tb-remark-flag" title="有備註">備註</span>' : '') +
-        '</div>' +
-        '<div class="tb-dept-grade">' + esc(r.grade) + '</div>' +
-        '<div class="tb-dept-id"><span class="tb-pill ' + identityClass(r.identity) + '">' + esc(r.identity) + '</span></div>' +
-        '<div class="tb-dept-quota"><span class="tb-num">' + esc(r.quota) + '</span><span class="tb-unit">名</span></div>' +
-        '<div class="tb-dept-exam">' + esc(exam || '—') + '</div>' +
-        '<button type="button" class="tb-toggle" data-expand="' + esc(r.id) + '" aria-expanded="' + open + '" aria-controls="' + detailId + '">' + (open ? '收合' : '詳情') + '</button>' +
+        '<button type="button" class="tb-star' + (fav ? ' is-on' : '') + '" data-fav="' + esc(d.ids.join(',')) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(g.school + ' ' + d.dept + ' ' + d.grade) + '">' + (fav ? '★' : '☆') + '</button>' +
+        '<button type="button" class="tb-dept-btn" data-expand="' + esc(d.key) + '" aria-expanded="' + open + '" aria-controls="' + detailId + '">' +
+          '<span class="tb-dept-name">' + highlight(d.dept, ts) +
+            (d.remarks.length ? '<span class="tb-remark-flag">備註</span>' : '') +
+            (ownDate ? '<span class="tb-dept-date">報名 ' + fmtShort(r0.start) + '–' + fmtShort(r0.end) + '</span>' : '') +
+            (r0.stage1 || r0.stage2 ? '<span class="tb-dept-exam">' + esc([r0.stage1, r0.stage2 ? (/^複試/.test(r0.stage2) ? '' : '複試:') + r0.stage2 : ''].filter(Boolean).join(' / ')) + '</span>' : '') +
+          '</span>' +
+          '<span class="tb-dept-grade">' + esc(d.grade) + '</span>' +
+          '<span class="tb-dept-quota">' + quotaHtml(d) + '</span>' +
+          '<span class="tb-chev" aria-hidden="true">›</span>' +
+        '</button>' +
       '</div>' +
       '<div class="tb-dept-detail" id="' + detailId + '"' + (open ? '' : ' hidden') + '>' +
         '<dl>' +
-          '<dt>初試</dt><dd>' + esc(r.stage1 || '無') + '</dd>' +
-          '<dt>複試</dt><dd>' + esc(r.stage2 || '無') + '</dd>' +
-          (r.remarks ? '<dt>備註</dt><dd class="tb-pre">' + esc(r.remarks) + '</dd>' : '') +
-          '<dt>報名期間</dt><dd>' + fmt(r.start) + ' – ' + fmt(r.end) + '</dd>' +
+          (d.rows.length > 1 ? '<dt>名額</dt><dd>' + d.rows.map(function (r) { return esc(r.identity) + ' ' + esc(r.quota) + ' 名'; }).join('、') + '</dd>' : '') +
+          '<dt>初試</dt><dd>' + examHtml(d, 'stage1') + '</dd>' +
+          '<dt>複試</dt><dd>' + examHtml(d, 'stage2') + '</dd>' +
+          (d.remarks.length ? '<dt>備註</dt><dd class="tb-pre">' + esc(d.remarks.join('\n')) + '</dd>' : '') +
+          (ownDate ? '<dt>報名期間</dt><dd>' + fmt(r0.start) + ' – ' + fmt(r0.end) + '</dd>' : '') +
         '</dl>' +
       '</div>' +
     '</li>';
@@ -359,33 +402,27 @@
     var st = g.status;
     var url = String(g.url || '').trim();
     if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+    var groups = deptGroups(f.rows);
     var showAll = !!state.showAll[g.key];
-    var rows = showAll ? f.rows : f.rows.slice(0, ROWS_COLLAPSED);
-    var hiddenInSchool = g.rows.length - f.rows.length;
+    var shown = showAll ? groups : groups.slice(0, ROWS_COLLAPSED);
+    var hiddenInSchool = deptGroups(g.rows).length - groups.length;
+    var sub = [g.region, groups.length + ' 個系組', '名額 ' + f.quota].filter(Boolean);
     return '<article class="tb-card tb-st-' + st.key + '" style="animation-delay:' + Math.min(index * 40, 400) + 'ms">' +
       '<header class="tb-card-head">' +
         '<div class="tb-card-title">' +
-          '<div class="tb-badges">' +
-            '<span class="tb-badge tb-b-channel">' + esc(g.channel) + '</span>' +
-            (g.type ? '<span class="tb-badge ' + (g.type === '國立' ? 'tb-b-national' : 'tb-b-private') + '">' + esc(g.type) + '</span>' : '') +
-            (g.kind ? '<span class="tb-badge ' + (g.kind === '科大' ? 'tb-b-tech' : 'tb-b-univ') + '">' + esc(g.kind) + '</span>' : '') +
-            (g.region ? '<span class="tb-badge tb-b-region">' + esc(g.region) + '</span>' : '') +
-          '</div>' +
-          '<h3 class="tb-school">' + highlight(g.school, ts) + '</h3>' +
+          '<h3 class="tb-school">' + (CHANNELS.length > 1 ? '<span class="tb-badge tb-b-channel">' + esc(g.channel) + '</span>' : '') + highlight(g.school, ts) + '</h3>' +
+          '<div class="tb-card-sub">' + sub.map(esc).join('<span class="tb-dot">·</span>') + '</div>' +
         '</div>' +
-        '<div class="tb-card-meta">' +
-          '<div class="tb-date tb-date-' + st.key + '">' +
-            '<span class="tb-date-label">報名</span>' +
-            '<span class="tb-date-val">' + fmt(g.start) + ' – ' + fmt(g.end) + '</span>' +
-            '<span class="tb-date-status">' + esc(st.text) + '</span>' +
+        '<div class="tb-card-side">' +
+          '<div class="tb-status tb-status-' + st.key + '">' +
+            '<span class="tb-status-text">' + esc(st.text) + '</span>' +
+            '<span class="tb-status-date">' + fmtShort(g.start) + ' – ' + fmtShort(g.end) + '</span>' +
           '</div>' +
-          '<div class="tb-total"><span>' + f.rows.length + ' 個系組</span><span>名額合計 <strong>' + f.quota + '</strong></span></div>' +
-          (url ? '<a class="tb-btn-pdf" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="查看 ' + esc(g.school) + ' 簡章(另開新視窗)">查看簡章</a>' : '') +
+          (url ? '<a class="tb-btn-pdf" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="查看 ' + esc(g.school) + ' 簡章(另開新視窗)">簡章</a>' : '') +
         '</div>' +
       '</header>' +
-      '<div class="tb-table-head" aria-hidden="true"><span></span><span>系組</span><span>年級</span><span>身分</span><span>名額</span><span>考試項目</span><span></span></div>' +
-      '<ul class="tb-depts">' + rows.map(function (r) { return rowHtml(r, ts, g); }).join('') + '</ul>' +
-      (f.rows.length > ROWS_COLLAPSED ? '<button type="button" class="tb-showall" data-showall="' + esc(g.key) + '">' + (showAll ? '收合 ▴' : '展開其餘 ' + (f.rows.length - ROWS_COLLAPSED) + ' 個系組 ▾') + '</button>' : '') +
+      '<ul class="tb-depts">' + shown.map(function (d) { return deptHtml(d, ts, g); }).join('') + '</ul>' +
+      (groups.length > ROWS_COLLAPSED ? '<button type="button" class="tb-showall" data-showall="' + esc(g.key) + '">' + (showAll ? '收合 ▴' : '展開其餘 ' + (groups.length - ROWS_COLLAPSED) + ' 個系組 ▾') + '</button>' : '') +
       (hiddenInSchool > 0 ? '<p class="tb-hidden-note">此校另有 ' + hiddenInSchool + ' 個系組不符合目前的篩選條件</p>' : '') +
     '</article>';
   }
@@ -422,10 +459,19 @@
     function pageBtn(n) { return '<button type="button" class="tb-page' + (n === p ? ' is-on' : '') + '" data-page="' + n + '"' + (n === p ? ' aria-current="page"' : '') + '>' + n + '</button>'; }
   }
 
+  /** 收藏數以「學校 + 系組 + 年級」計算(同一列的一般生與外加身分算一個)。 */
+  function favCount() {
+    if (!state.rows.length) return favorites.length;
+    var keys = {};
+    state.rows.forEach(function (r) { if (favorites.indexOf(r.id) >= 0) keys[r.channel + r.school + r.department + r.grade] = true; });
+    return Object.keys(keys).length;
+  }
+
   function updateFavUI() {
-    var c = el('tbFavCount'); if (c) c.textContent = favorites.length;
-    el('tbFabCount').textContent = favorites.length;
-    el('tbFab').hidden = !favorites.length;
+    var n = favCount();
+    var c = el('tbFavCount'); if (c) c.textContent = n;
+    el('tbFabCount').textContent = n;
+    el('tbFab').hidden = !n;
   }
 
   // ---------- 收藏分享 ----------
@@ -516,11 +562,16 @@
     }
     if (d.share) return share(d.share);
     if (d.fav) {
-      var i = favorites.indexOf(d.fav);
-      if (i >= 0) favorites.splice(i, 1); else favorites.push(d.fav);
+      // 一列可能包含多個身分(一般生 + 退伍軍人):整列一起收藏或取消
+      var ids = d.fav.split(',');
+      var on = !ids.some(function (id) { return favorites.indexOf(id) >= 0; });
+      ids.forEach(function (id) {
+        var i = favorites.indexOf(id);
+        if (on && i < 0) favorites.push(id);
+        if (!on && i >= 0) favorites.splice(i, 1);
+      });
       saveFavorites(); updateFavUI();
       if (state.favOnly) return apply(true);
-      var on = i < 0;
       t.classList.toggle('is-on', on);
       t.textContent = on ? '★' : '☆';
       t.setAttribute('aria-pressed', on);
@@ -529,12 +580,10 @@
     if (d.expand) {
       state.expanded[d.expand] = !state.expanded[d.expand];
       var li = t.closest('.tb-dept');
-      var detail = li.querySelector('.tb-dept-detail');
       var isOpen = state.expanded[d.expand];
       li.classList.toggle('is-open', isOpen);
-      detail.hidden = !isOpen;
+      li.querySelector('.tb-dept-detail').hidden = !isOpen;
       t.setAttribute('aria-expanded', isOpen);
-      t.textContent = isOpen ? '收合' : '詳情';
       return;
     }
     if (d.showall) { state.showAll[d.showall] = !state.showAll[d.showall]; return renderList(); }
