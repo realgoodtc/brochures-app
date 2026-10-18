@@ -15,24 +15,36 @@
   var SCHOOLS_PER_PAGE = 10;
   var ROWS_COLLAPSED = 8;
   var FAV_KEY = 'tb_favorites';
-  var CACHE_KEY = 'tb_cache_v1';
+  var CACHE_KEY = 'tb_cache_v2';
+  var TAB_KEY = 'tb_tab';
 
-  var CHANNELS = []; // 由 manifest 決定
+  var CHANNELS = []; // 由 manifest 決定(頁籤順序)
   var SCHOOL_TYPES = ['國立', '私立', '大學', '科大'];
   var REGIONS = ['北區', '桃竹苗', '中彰投雲', '嘉南', '高屏', '花東', '外島'];
   var GRADES = ['二年級', '三年級', '四年級'];
-  var IDENTITIES = ['一般生', '其他身分'];
   var GROUP_DEFS = {
-    channel: { label: '招生管道', options: CHANNELS },
     schoolType: { label: '學校類型', options: SCHOOL_TYPES },
     region: { label: '地區', options: REGIONS },
     grade: { label: '年級', options: GRADES },
-    identity: { label: '身分', options: IDENTITIES }
+    identity: { label: '身分', options: ['一般生', '其他身分'] },
+    exam: { label: '考試方式', options: [] },
+    years: { label: '我的工作年資', options: ['未滿 1 年', '滿 1 年', '滿 2 年', '3 年以上'] }
   };
+  // 各頁籤(招生管道)的篩選條件與顯示方式(CHANNEL_FIELDS.md、DECISIONS D31)
+  //   main / more:主要與「更多篩選」的條件;identities:身分選項;exams:考試方式選項;slug:網址參數
+  var TAB_DEFS = {
+    '轉學考': { slug: 'transfer', label: '轉學考', main: ['schoolType', 'grade'], more: ['region', 'identity'], identities: ['一般生', '其他身分'] },
+    '寒轉': { slug: 'winter', label: '寒轉', main: ['schoolType', 'grade'], more: ['region', 'identity'], identities: ['一般生', '其他身分'] },
+    '特殊選才': { slug: 'special', label: '特殊選才', main: ['schoolType'], more: ['region'] },
+    '研究所甄試': { slug: 'grad-review', label: '研究所甄試', main: ['schoolType', 'exam'], more: ['region'], exams: ['只審查', '需面試'] },
+    '研究所一般生': { slug: 'grad-exam', label: '研究所一般生', main: ['schoolType', 'exam'], more: ['region', 'identity'], exams: ['有筆試', '無筆試'], identities: ['一般生', '在職生'] },
+    '在職專班': { slug: 'in-service', label: '在職專班', main: ['schoolType', 'years'], more: ['region'], mainIdentity: '在職生' }
+  };
+  function tabDef(ch) { return TAB_DEFS[ch] || { slug: ch, label: ch, main: ['schoolType'], more: ['region'] }; }
 
   // ---------- 狀態 ----------
   var state = {
-    rows: [], groups: [], manifest: null,
+    rows: [], groups: [], manifest: null, files: {}, tab: '', year: 'auto', latestYear: null,
     q: '', date: 'all', dateStart: '', dateEnd: '', favOnly: false, sort: 'default', page: 1,
     sel: {}, expanded: {}, showAll: {}
   };
@@ -66,9 +78,21 @@
     if (left <= 3) return { key: 'urgent', text: left === 0 ? '今天截止' : '剩 ' + left + ' 天', left: left };
     return { key: 'open', text: '報名中', left: left };
   }
-  var STATUS_ORDER = { urgent: 0, open: 1, soon: 2, unknown: 3, closed: 4 };
+  var STATUS_ORDER = { urgent: 0, open: 1, soon: 2, unknown: 3, closed: 4, old: 5 };
 
-  function isSpecialIdentity(id) { return id !== '一般生'; }
+  /** 主要身分(名額以大字顯示):一般生;在職專班為在職生。 */
+  function isMainIdentity(r) { return r.identity === (tabDef(r.channel).mainIdentity || '一般生'); }
+
+  /** 考試方式分類(依網站顯示名稱):書審、面試以外的項目視為筆試科目;「選項1」是整組任選的代表項目。 */
+  function examKinds(exams) {
+    if (!exams || !exams.length) return null;
+    var written = exams.some(function (x) { return ['書審', '面試', '術科'].indexOf(x[1]) < 0 && !/^選項/.test(x[1]); });
+    var interview = exams.some(function (x) { return x[1] === '面試'; });
+    return { written: written, interview: interview };
+  }
+
+  /** 我的工作年資(複選取最大值)→ 報考資格需要的年資不超過它的系所。 */
+  var YEAR_LIMIT = { '未滿 1 年': 0, '滿 1 年': 1, '滿 2 年': 2, '3 年以上': 99 };
 
   function loadFavorites() {
     try { var v = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
@@ -103,10 +127,60 @@
       var cnt = {}, best = null;
       g.rows.forEach(function (r) { var k = r.start + '-' + r.end; cnt[k] = (cnt[k] || 0) + 1; if (!best || cnt[k] > cnt[best]) best = k; });
       g.start = best.split('-')[0]; g.end = best.split('-')[1];
-      g.status = status(g.start, g.end);
+      // 新年度尚未公布、以前一年資料補上的學校(D31②):不顯示報名狀態,改標「N 學年度資料」
+      g.fallback = state.year === 'auto' && state.latestYear && g.year < state.latestYear;
+      g.status = g.fallback ? { key: 'old', text: g.year + ' 學年度資料', left: null } : status(g.start, g.end);
       g.search = norm(g.school);
     });
     return list;
+  }
+
+  /** 頁籤(管道)在 manifest 中的各年度,新到舊;舊格式 manifest 只有 file。 */
+  function channelYears(ch) {
+    var c = (state.manifest.channels || []).filter(function (x) { return x.channel === ch; })[0];
+    if (!c) return [];
+    return c.years && c.years.length ? c.years : [{ academic_year: c.academic_year, file: c.file, rows: c.rows, schools: c.schools }];
+  }
+
+  /** 讀取資料檔(同一版本讀過的不再下載;sessionStorage 快取各檔)。 */
+  function getFile(file) {
+    if (state.files[file]) return Promise.resolve(state.files[file]);
+    var key = CACHE_KEY + ':' + state.manifest.data_version + ':' + file;
+    try { var c = JSON.parse(sessionStorage.getItem(key) || 'null'); if (c) { state.files[file] = c; return Promise.resolve(c); } } catch (e) { /* 無快取 */ }
+    return fetchJson(DATA_BASE + file + '?v=' + encodeURIComponent(state.manifest.data_version)).then(function (f) {
+      state.files[file] = f;
+      try { sessionStorage.setItem(key, JSON.stringify(f)); } catch (e) { /* 超過容量就不快取 */ }
+      return f;
+    });
+  }
+
+  /**
+   * 目前頁籤與年度的資料列。year = 'auto':最新年度 + 前一年度中最新年度沒有的學校(D31② 新年度自動補舊年度);
+   * 指定年度:只顯示該年度。
+   */
+  function loadTab() {
+    var years = channelYears(state.tab);
+    state.latestYear = years.length ? years[0].academic_year : null;
+    var picked = state.year === 'auto' ? years.slice(0, 2) : years.filter(function (y) { return String(y.academic_year) === String(state.year); });
+    return Promise.all(picked.map(function (y) { return getFile(y.file); })).then(function (files) {
+      var rows = [];
+      var schoolsDone = {};
+      files.forEach(function (f, i) {
+        var list = expandFile(f);
+        if (state.year === 'auto' && i > 0) list = list.filter(function (r) { return !schoolsDone[r.school]; });
+        list.forEach(function (r) { schoolsDone[r.school] = true; });
+        rows = rows.concat(list);
+      });
+      state.rows = rows;
+      state.groups = buildGroups(rows);
+    });
+  }
+
+  /** 所有已載入資料列(收藏計數、分享連結用)。 */
+  function loadedRows() {
+    var out = [];
+    Object.keys(state.files).forEach(function (f) { out = out.concat(expandFile(state.files[f])); });
+    return out;
   }
 
   function fetchJson(url) {
@@ -116,30 +190,56 @@
     });
   }
 
+  function loadError(err) {
+    if (window.console) console.error('[升學簡章] 資料載入失敗', err);
+    el('tbList').innerHTML = '<div class="tb-error" role="alert">⚠ 簡章資料載入失敗,請確認網路連線後重新整理頁面。</div>';
+  }
+
+  /** 頁籤:網址參數 ?tab= → 上次瀏覽 → 第一個管道。 */
+  function initialTab() {
+    var want = '';
+    try { want = new URLSearchParams(window.location.search).get('tab') || ''; } catch (e) { /* 舊瀏覽器 */ }
+    if (!want) { try { want = localStorage.getItem(TAB_KEY) || ''; } catch (e) { /* 無痕模式 */ } }
+    var hit = CHANNELS.filter(function (ch) { return tabDef(ch).slug === want || ch === want; })[0];
+    return hit || CHANNELS[0];
+  }
+
   function load() {
     fetchJson(DATA_BASE + 'manifest.json?t=' + Date.now()).then(function (manifest) {
-      var cached = null;
-      try { cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); } catch (e) { cached = null; }
-      if (cached && cached.version === manifest.data_version) return { manifest: manifest, files: cached.files };
-      return Promise.all(manifest.channels.map(function (c) {
-        return fetchJson(DATA_BASE + c.file + '?v=' + encodeURIComponent(manifest.data_version));
-      })).then(function (files) {
-        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ version: manifest.data_version, files: files })); } catch (e) { /* 超過容量就不快取 */ }
-        return { manifest: manifest, files: files };
-      });
-    }).then(function (d) {
-      state.manifest = d.manifest;
-      state.rows = [];
-      d.files.forEach(function (f) { state.rows = state.rows.concat(expandFile(f)); });
-      state.groups = buildGroups(state.rows);
-      readUrlFavorites();
+      state.manifest = manifest;
+      CHANNELS = (manifest.channels || []).map(function (c) { return c.channel; });
+      state.tab = initialTab();
+      // 收到分享的收藏連結:先載入各管道最新年度,才知道收藏屬於哪個頁籤
+      var hasFav = false;
+      try { hasFav = !!new URLSearchParams(window.location.search).get('fav'); } catch (e) { hasFav = false; }
+      return hasFav ? Promise.all(CHANNELS.map(function (ch) { return getFile(channelYears(ch)[0].file); })).then(readUrlFavorites) : null;
+    }).then(function () {
+      return loadTab();
+    }).then(function () {
+      renderTabs();
       updateFavUI();
       renderFilterOptions();
       apply();
-    }).catch(function (err) {
-      if (window.console) console.error('[升學簡章] 資料載入失敗', err);
-      el('tbList').innerHTML = '<div class="tb-error" role="alert">⚠ 簡章資料載入失敗,請確認網路連線後重新整理頁面。</div>';
-    });
+    }).catch(loadError);
+  }
+
+  /** 切換頁籤或年度:篩選條件中頁籤專屬的(年級、身分、考試方式、年資)清除,搜尋與日期保留。 */
+  function switchTo(tab, year) {
+    if (tab !== state.tab) {
+      state.tab = tab;
+      ['grade', 'identity', 'exam', 'years'].forEach(function (k) { state.sel[k] = []; });
+      try { localStorage.setItem(TAB_KEY, tabDef(tab).slug); } catch (e) { /* 無痕模式 */ }
+      try {
+        var u = new URL(window.location.href);
+        u.searchParams.set('tab', tabDef(tab).slug);
+        window.history.replaceState(null, '', u.toString());
+      } catch (e) { /* 舊瀏覽器 */ }
+    }
+    state.year = year;
+    state.expanded = {}; state.showAll = {};
+    renderTabs();
+    el('tbList').innerHTML = '<div class="tb-skeleton"></div><div class="tb-skeleton"></div>';
+    loadTab().then(function () { renderFilterOptions(); apply(); }).catch(loadError);
   }
 
   // ---------- 骨架 ----------
@@ -147,6 +247,7 @@
 
   root.innerHTML =
     '<div class="tb">' +
+      '<nav class="tb-tabs" id="tbTabs" role="tablist" aria-label="招生管道"></nav>' +
       '<section class="tb-panel" aria-label="搜尋與篩選">' +
         '<div class="tb-searchbar">' +
           '<label class="tb-sr" for="tbSearch">搜尋校名或系名</label>' +
@@ -178,17 +279,39 @@
     return '<div class="tb-row"><span class="tb-label">' + def.label + '</span><div class="tb-opts" data-key="' + key + '">' + html + '</div></div>';
   }
 
-  function renderFilterOptions() {
-    // 管道按鈕依 manifest 產生:發布系統新增管道時,前台不用改程式
-    GROUP_DEFS.channel.options = CHANNELS = state.manifest.channels.map(function (c) { return c.channel; });
+  /** 頁籤依 manifest 產生:發布系統新增管道時,前台不用改程式。 */
+  function renderTabs() {
+    el('tbTabs').hidden = CHANNELS.length < 2;
+    el('tbTabs').innerHTML = CHANNELS.map(function (ch) {
+      var on = ch === state.tab;
+      return '<button type="button" class="tb-tab' + (on ? ' is-on' : '') + '" role="tab" aria-selected="' + on + '" data-tab="' + esc(ch) + '">' +
+        esc(tabDef(ch).label) + '</button>';
+    }).join('');
+  }
 
-    var main = '';
-    if (GROUP_DEFS.channel.options.length > 1) main += groupButtons('channel');
-    main += groupButtons('schoolType') + groupButtons('grade') +
+  function yearRow() {
+    var years = channelYears(state.tab);
+    if (years.length < 2) return '';
+    var latest = years[0].academic_year, prev = years[1].academic_year;
+    var opts = '<option value="auto"' + (state.year === 'auto' ? ' selected' : '') + '>' + latest + ' 學年度(尚未公布的學校顯示 ' + prev + ' 學年度)</option>' +
+      years.map(function (y) {
+        return '<option value="' + esc(y.academic_year) + '"' + (String(state.year) === String(y.academic_year) ? ' selected' : '') + '>只看 ' + esc(y.academic_year) + ' 學年度</option>';
+      }).join('');
+    return '<div class="tb-row"><span class="tb-label">學年度</span><div class="tb-opts"><select id="tbYear" class="tb-select" aria-label="學年度">' + opts + '</select></div></div>';
+  }
+
+  function renderFilterOptions() {
+    var def = tabDef(state.tab);
+    root.querySelector('.tb').classList.toggle('tb-nograde', def.main.indexOf('grade') < 0);
+    GROUP_DEFS.identity.options = def.identities || ['一般生', '其他身分'];
+    GROUP_DEFS.exam.options = def.exams || [];
+    var main = yearRow();
+    def.main.forEach(function (k) { main += groupButtons(k); });
+    main +=
       '<div class="tb-row"><span class="tb-label">報名日期</span><div class="tb-opts">' +
         dateBtn('all', '全部') + dateBtn('open', '正在報名') + dateBtn('urgent', '3 天內截止') + dateBtn('soon', '尚未開始') +
       '</div></div>';
-    var more = groupButtons('region') + groupButtons('identity') +
+    var more = def.more.map(groupButtons).join('') +
       '<div class="tb-row"><span class="tb-label">自訂日期</span><div class="tb-opts">' +
         '<span class="tb-daterange' + (state.date === 'custom' ? ' is-on' : '') + '">' +
           '<input type="date" id="tbDateStart" aria-label="報名期間起" value="' + esc(state.dateStart) + '"><span>至</span>' +
@@ -224,7 +347,6 @@
 
   function rowMatches(r, ts, res, dateRange) {
     var s = state.sel;
-    if (s.channel.length && s.channel.indexOf(r.channel) < 0) return false;
     if (s.schoolType.length) {
       var okType = s.schoolType.some(function (t) {
         if (t === '國立' || t === '私立') return r.type === t;
@@ -235,8 +357,21 @@
     if (s.region.length && s.region.indexOf(r.region) < 0) return false;
     if (s.grade.length && s.grade.indexOf(r.grade) < 0) return false;
     if (s.identity.length) {
-      var cat = isSpecialIdentity(r.identity) ? '其他身分' : '一般生';
+      // 選項是實際身分(研究所一般生:一般生/在職生)時直接比對;「其他身分」= 一般生以外(轉學考的退伍軍人等)
+      var cat = s.identity.indexOf(r.identity) >= 0 ? r.identity : (r.identity === '一般生' ? '一般生' : '其他身分');
       if (s.identity.indexOf(cat) < 0) return false;
+    }
+    if (s.exam.length) {
+      var k = examKinds(r.exams);
+      if (!k) return false;
+      var okExam = s.exam.some(function (e) {
+        return (e === '有筆試' && k.written) || (e === '無筆試' && !k.written) || (e === '需面試' && k.interview) || (e === '只審查' && !k.interview && !k.written);
+      });
+      if (!okExam) return false;
+    }
+    if (s.years.length) {
+      var mine = Math.max.apply(null, s.years.map(function (v) { return YEAR_LIMIT[v]; }));
+      if (r.years !== null && r.years !== undefined && Number(r.years) > mine) return false;
     }
     if (state.favOnly && favorites.indexOf(r.id) < 0) return false;
     if (state.date !== 'all') {
@@ -267,7 +402,8 @@
       if (m.length) filtered.push({ g: g, rows: m, quota: m.reduce(function (n, r) { return n + (+r.quota || 0); }, 0) });
     });
     var sorters = {
-      'default': function (a, b) { return (STATUS_ORDER[a.g.status.key] - STATUS_ORDER[b.g.status.key]) || ((+a.g.end || 99999999) - (+b.g.end || 99999999)) || a.g.school.localeCompare(b.g.school, 'zh-Hant'); },
+      // 前一學年度補上的學校排在最後
+      'default': function (a, b) { return ((a.g.fallback ? 1 : 0) - (b.g.fallback ? 1 : 0)) || (STATUS_ORDER[a.g.status.key] - STATUS_ORDER[b.g.status.key]) || ((+a.g.end || 99999999) - (+b.g.end || 99999999)) || a.g.school.localeCompare(b.g.school, 'zh-Hant'); },
       deadline: function (a, b) { return ((a.g.status.key === 'closed') - (b.g.status.key === 'closed')) || ((+a.g.end || 99999999) - (+b.g.end || 99999999)); },
       quota: function (a, b) { return b.quota - a.quota; },
       name: function (a, b) { return a.g.school.localeCompare(b.g.school, 'zh-Hant') || CHANNELS.indexOf(a.g.channel) - CHANNELS.indexOf(b.g.channel); }
@@ -288,13 +424,14 @@
   function renderSummary() {
     var m = state.manifest;
     var rows = filtered.reduce(function (n, f) { return n + deptGroups(f.rows).length; }, 0);
-    var years = {};
-    (m ? m.channels : []).forEach(function (c) { years[c.academic_year] = true; });
+    var old = filtered.filter(function (f) { return f.g.fallback; });
+    var year = state.year === 'auto' ? state.latestYear : state.year;
     var updated = m && m.generated_at ? new Date(m.generated_at) : null;
     var upd = updated && !isNaN(updated) ? updated.getFullYear() + '/' + (updated.getMonth() + 1) + '/' + updated.getDate() : '';
     el('tbSummary').innerHTML =
-      '<span class="tb-summary-main">' + (hasFilter() ? '🔍 符合條件:' : '📌 ' + Object.keys(years).join('、') + ' 學年度,收錄 ') +
-        '<strong>' + filtered.length + '</strong> 校、<strong>' + rows + '</strong> 個系組</span>' +
+      '<span class="tb-summary-main">' + (hasFilter() ? '🔍 符合條件:' : '📌 ' + esc(year) + ' 學年度' + esc(tabDef(state.tab).label) + ',收錄 ') +
+        '<strong>' + filtered.length + '</strong> 校、<strong>' + rows + '</strong> 個系組' +
+        (old.length ? '(其中 ' + old.length + ' 校尚未公布 ' + esc(state.latestYear) + ' 學年度簡章,顯示 ' + esc(old[0].g.year) + ' 學年度資料)' : '') + '</span>' +
       (upd ? '<span class="tb-summary-sub">資料更新 ' + upd + '</span>' : '');
   }
 
@@ -334,12 +471,12 @@
   function deptGroups(rows) {
     var map = {}, list = [];
     rows.forEach(function (r) {
-      var k = r.department + '|' + r.grade;
-      if (!map[k]) { map[k] = { key: r.id, dept: r.department, grade: r.grade, rows: [] }; list.push(map[k]); }
+      var k = r.department + '|' + r.grade + '|' + (r.group || '');
+      if (!map[k]) { map[k] = { key: r.id, dept: r.department, grade: r.grade, group: r.group || '', rows: [] }; list.push(map[k]); }
       map[k].rows.push(r);
     });
     list.forEach(function (d) {
-      d.rows.sort(function (a, b) { return (a.identity !== '一般生') - (b.identity !== '一般生'); });
+      d.rows.sort(function (a, b) { return (isMainIdentity(a) ? 0 : 1) - (isMainIdentity(b) ? 0 : 1); });
       d.ids = d.rows.map(function (r) { return r.id; });
       d.remarks = [];
       d.rows.forEach(function (r) {
@@ -351,7 +488,7 @@
 
   function quotaHtml(d) {
     return d.rows.map(function (r) {
-      return r.identity === '一般生'
+      return isMainIdentity(r)
         ? '<span class="tb-q"><span class="tb-num">' + esc(r.quota) + '</span><span class="tb-unit">名</span></span>'
         : '<span class="tb-q tb-q-extra">' + esc(r.identity) + ' ' + esc(r.quota) + '</span>';
     }).join('');
@@ -365,20 +502,67 @@
     return d.rows.map(function (r) { return '<span class="tb-id-label">' + esc(r.identity) + '</span>' + esc(r[field] || '無'); }).join('<br>');
   }
 
+  /**
+   * 結構化配分(發布檔的 exams 欄:[階段, 名稱, 配分, 單位, 日期, 任選組])→「書審 40%、面試 60%(1/26)」;
+   * 兩個階段時加「初試:」「複試:」。舊資料沒有 exams 時回傳空字串,改顯示簡章原文。
+   */
+  function examsText(exams) {
+    if (!exams || !exams.length) return '';
+    var w = function (x) { return x[2] === null || x[2] === undefined ? '' : (x[3] === '%' ? ' ' + x[2] + '%' : (x[3] === '倍' ? ' ×' + x[2] : ' ' + x[2])); };
+    var dt = function (x) { return x[4] && String(x[4]).length === 8 ? '(' + Number(String(x[4]).slice(4, 6)) + '/' + Number(String(x[4]).slice(6)) + ')' : ''; };
+    var stages = [1, 2].map(function (s) { return exams.filter(function (x) { return x[0] === s; }); }).filter(function (a) { return a.length; });
+    // x[6]:所屬整組項目(例如國文、英文屬於「筆試 60%」),顯示成「筆試 60%(國文、英文)」
+    var partsText = function (list, all) {
+      var parts = [], groups = {};
+      list.forEach(function (x) {
+        if (x[5]) { if (!groups[x[5]]) { groups[x[5]] = []; parts.push(groups[x[5]]); } groups[x[5]].push(x); } else parts.push(x);
+      });
+      return parts.map(function (p) {
+        if (Array.isArray(p[0])) return p.map(function (x) { return x[1]; }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
+        var kids = all ? all.filter(function (k) { return k[6] && k[6] === p[1]; }) : [];
+        return p[1] + w(p) + dt(p) + (kids.length ? '(' + partsText(kids) + ')' : '');
+      }).join('、');
+    };
+    return stages.map(function (list) {
+      var text = partsText(list.filter(function (x) { return !x[6]; }), list);
+      return stages.length > 1 ? (list[0][0] === 1 ? '初試:' : '複試:') + text : text;
+    }).join('|');
+  }
+
+  /** 原文是否有配分沒有的資訊(與 src/core/exams.js 的 hasExtraInfo 相同規則);沒有就不重複顯示。 */
+  function extraInfo(text, exams) {
+    var t = String(text || '');
+    if (!t) return false;
+    if (!exams || !exams.length) return true;
+    exams.map(function (x) { return String(x[1] || ''); }).filter(Boolean).sort(function (a, b) { return b.length - a.length; })
+      .forEach(function (n) { t = t.split(n).join(''); });
+    t = t.replace(/初試|複試|第[一二12]階段|佔|占|總成績|比例|百分比|權重|加權|筆試|口試|面試|審查|共同科目|專門科目|各|計/g, '')
+      .replace(/[\d.%％\s()()\[\]【】:：、,,;;。/\-~～]/g, '');
+    return t.length >= 4;
+  }
+
+  function stageText(r) {
+    return [r.stage1, r.stage2 ? (/^複試/.test(r.stage2) ? '' : '複試:') + r.stage2 : ''].filter(Boolean).join(' / ');
+  }
+
   function deptHtml(d, ts, g) {
     var fav = d.ids.some(function (id) { return favorites.indexOf(id) >= 0; });
     var open = !!state.expanded[d.key];
     var r0 = d.rows[0];
     var ownDate = r0.start !== g.start || r0.end !== g.end;
     var detailId = 'tbd-' + d.key;
+    var exams = examsText(r0.exams);
+    var summary = exams || stageText(r0);
+    var keyDates = (r0.dates || []).filter(function (x) { return x[0] && String(x[1]).length === 8; });
     return '<li class="tb-dept' + (open ? ' is-open' : '') + '">' +
       '<div class="tb-dept-main">' +
         '<button type="button" class="tb-star' + (fav ? ' is-on' : '') + '" data-fav="' + esc(d.ids.join(',')) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(g.school + ' ' + d.dept + ' ' + d.grade) + '">' + (fav ? '★' : '☆') + '</button>' +
         '<button type="button" class="tb-dept-btn" data-expand="' + esc(d.key) + '" aria-expanded="' + open + '" aria-controls="' + detailId + '">' +
           '<span class="tb-dept-name">' + highlight(d.dept, ts) +
+            (d.group ? '<span class="tb-group">' + esc(d.group) + '</span>' : '') +
             (d.remarks.length ? '<span class="tb-remark-flag">備註</span>' : '') +
             (ownDate ? '<span class="tb-dept-date">報名 ' + fmtShort(r0.start) + '–' + fmtShort(r0.end) + '</span>' : '') +
-            (r0.stage1 || r0.stage2 ? '<span class="tb-dept-exam">' + esc([r0.stage1, r0.stage2 ? (/^複試/.test(r0.stage2) ? '' : '複試:') + r0.stage2 : ''].filter(Boolean).join(' / ')) + '</span>' : '') +
+            (summary ? '<span class="tb-dept-exam">' + esc(summary) + '</span>' : '') +
           '</span>' +
           '<span class="tb-dept-grade">' + esc(d.grade) + '</span>' +
           '<span class="tb-dept-quota">' + quotaHtml(d) + '</span>' +
@@ -387,9 +571,14 @@
       '</div>' +
       '<div class="tb-dept-detail" id="' + detailId + '"' + (open ? '' : ' hidden') + '>' +
         '<dl>' +
+          (r0.years !== null && r0.years !== undefined ? '<dt>工作年資</dt><dd>' + esc(r0.years) + ' 年以上</dd>' : '') +
+          (r0.time ? '<dt>上課時段</dt><dd>' + esc(r0.time) + '</dd>' : '') +
+          (r0.elig ? '<dt>報考資格</dt><dd class="tb-pre">' + esc(r0.elig) + '</dd>' : '') +
           (d.rows.length > 1 ? '<dt>名額</dt><dd>' + d.rows.map(function (r) { return esc(r.identity) + ' ' + esc(r.quota) + ' 名'; }).join('、') + '</dd>' : '') +
-          '<dt>初試</dt><dd>' + examHtml(d, 'stage1') + '</dd>' +
-          '<dt>複試</dt><dd>' + examHtml(d, 'stage2') + '</dd>' +
+          (exams ? '<dt>配分</dt><dd>' + esc(exams).replace(/\|/g, '<br>') + '</dd>' : '') +
+          (!exams || extraInfo(r0.stage1, r0.exams) ? '<dt>' + (exams ? '初試說明' : '初試') + '</dt><dd>' + examHtml(d, 'stage1') + '</dd>' : '') +
+          (!exams || extraInfo(r0.stage2, r0.exams) ? '<dt>' + (exams ? '複試說明' : '複試') + '</dt><dd>' + examHtml(d, 'stage2') + '</dd>' : '') +
+          (keyDates.length ? '<dt>重要日期</dt><dd>' + keyDates.map(function (x) { return esc(x[0]) + ' ' + fmt(String(x[1])); }).join('<br>') + '</dd>' : '') +
           (d.remarks.length ? '<dt>備註</dt><dd class="tb-pre">' + esc(d.remarks.join('\n')) + '</dd>' : '') +
           (ownDate ? '<dt>報名期間</dt><dd>' + fmt(r0.start) + ' – ' + fmt(r0.end) + '</dd>' : '') +
         '</dl>' +
@@ -410,13 +599,14 @@
     return '<article class="tb-card tb-st-' + st.key + '" style="animation-delay:' + Math.min(index * 40, 400) + 'ms">' +
       '<header class="tb-card-head">' +
         '<div class="tb-card-title">' +
-          '<h3 class="tb-school">' + (CHANNELS.length > 1 ? '<span class="tb-badge tb-b-channel">' + esc(g.channel) + '</span>' : '') + highlight(g.school, ts) + '</h3>' +
+          '<h3 class="tb-school">' + highlight(g.school, ts) + '</h3>' +
           '<div class="tb-card-sub">' + sub.map(esc).join('<span class="tb-dot">·</span>') + '</div>' +
+          (g.fallback ? '<div class="tb-old-note">' + esc(state.latestYear) + ' 學年度簡章尚未公布,以下為 ' + esc(g.year) + ' 學年度資料,僅供參考</div>' : '') +
         '</div>' +
         '<div class="tb-card-side">' +
           '<div class="tb-status tb-status-' + st.key + '">' +
             '<span class="tb-status-text">' + esc(st.text) + '</span>' +
-            '<span class="tb-status-date">' + fmtShort(g.start) + ' – ' + fmtShort(g.end) + '</span>' +
+            (g.fallback ? '' : '<span class="tb-status-date">' + fmtShort(g.start) + ' – ' + fmtShort(g.end) + '</span>') +
           '</div>' +
           (url ? '<a class="tb-btn-pdf" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="查看 ' + esc(g.school) + ' 簡章(另開新視窗)">簡章</a>' : '') +
         '</div>' +
@@ -461,10 +651,16 @@
 
   /** 收藏數以「學校 + 系組 + 年級」計算(同一列的一般生與外加身分算一個)。 */
   function favCount() {
-    if (!state.rows.length) return favorites.length;
-    var keys = {};
-    state.rows.forEach(function (r) { if (favorites.indexOf(r.id) >= 0) keys[r.channel + r.school + r.department + r.grade] = true; });
-    return Object.keys(keys).length;
+    var rows = loadedRows();
+    if (!rows.length) return favorites.length;
+    var keys = {}, found = {};
+    rows.forEach(function (r) {
+      if (favorites.indexOf(r.id) < 0) return;
+      found[r.id] = true;
+      keys[r.channel + r.school + r.department + r.grade + (r.group || '')] = true;
+    });
+    // 尚未載入的頁籤中的收藏,每筆算一個
+    return Object.keys(keys).length + favorites.filter(function (id) { return !found[id]; }).length;
   }
 
   function updateFavUI() {
@@ -499,9 +695,11 @@
     try { p = new URLSearchParams(window.location.search).get('fav'); } catch (e) { return; }
     if (!p) return;
     var ids = {};
-    state.rows.forEach(function (r) { ids[r.id] = true; });
+    loadedRows().forEach(function (r) { ids[r.id] = r.channel; });
     var shared = p.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return ids[s]; });
     if (!shared.length) return;
+    // 切到收藏所屬的頁籤(第一筆)
+    state.tab = ids[shared[0]];
     var fresh = shared.filter(function (id) { return favorites.indexOf(id) < 0; });
     if (fresh.length && confirm('收到別人分享的 ' + shared.length + ' 個校系,要加入你的收藏嗎?')) {
       favorites = favorites.concat(fresh);
@@ -542,6 +740,7 @@
     var t = e.target.closest('button, a');
     if (!t || !root.contains(t)) return;
     var d = t.dataset;
+    if (d.tab) { if (d.tab !== state.tab) switchTo(d.tab, 'auto'); return; }
     if (d.group !== undefined) return toggleGroup(d.group, d.val);
     if (d.date) {
       state.date = d.date; state.dateStart = ''; state.dateEnd = '';
@@ -602,6 +801,7 @@
   root.addEventListener('change', function (e) {
     var t = e.target;
     if (t.id === 'tbSort') { state.sort = t.value; return apply(); }
+    if (t.id === 'tbYear') return switchTo(state.tab, t.value === 'auto' ? 'auto' : Number(t.value));
     if (t.id === 'tbDateStart' || t.id === 'tbDateEnd') {
       state.dateStart = el('tbDateStart').value; state.dateEnd = el('tbDateEnd').value;
       state.date = state.dateStart || state.dateEnd ? 'custom' : 'all';
