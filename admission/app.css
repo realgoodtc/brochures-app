@@ -275,6 +275,11 @@
 #admission-brochures-app :where(li) { margin: 0; }
 #admission-brochures-app :where(a) { box-shadow: none; }
 #admission-brochures-app :where(table) { margin: 0; }
+/* 網站版:頁面改成 Elementor 全寬後,內容寬度對齊網站頁首(約 1600px);窄螢幕照舊縮回 */
+#admission-brochures-app .b { max-width: 1640px; }
+/* 「排序」兩字在較窄的寬度被擠成直排 */
+#admission-brochures-app .g-sort { white-space: nowrap; flex-shrink: 0; }
+#admission-brochures-app .b-bar-right > * { flex-shrink: 0; }
 /* 浮在頁面上的元件蓋過佈景主題的固定頁首 */
 #admission-brochures-app .f-tray, #admission-brochures-app .b-toast { z-index: 99990; }
 #admission-brochures-app .f-cmp { z-index: 99995; }
