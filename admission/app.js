@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、g/g.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-06T06:43:49.335Z
+ * 產生時間:2026-11-06T10:20:14.074Z
  */
 (function () {
   'use strict';
@@ -926,7 +926,8 @@ window.TBEngine = (function () {
     var info = E.detail(d, { quota: true, summaryMax: 70 }), open = !!ui.open[d.key] && info.length > 0;
     var main = parts.filter(function (p) { return p.main; }), extra = parts.filter(function (p) { return !p.main; });
     // 年級、組別、標籤用「·」連成一行小字,只有「新增」保留細框標籤(A 的做法)
-    var info1 = [d.grade, d.group].concat(r0.x.tags.slice(0, 2)).filter(Boolean).map(esc).join(' · ');
+    // 組別接在系名後面;「部分英語授課」這類備註標籤不放在列上(展開後的備註看得到),列上只留年級與考科
+    var info1 = [d.grade].filter(Boolean).map(esc).join(' · ');
     var exam = E.summaryLine(d, 70).text;
     var chips = (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '') +
       (info1 ? '<span class="f-info">' + info1 + '</span>' : '') +
@@ -935,7 +936,7 @@ window.TBEngine = (function () {
       '<button type="button" class="b-star" data-fav="' + esc(d.ids.join(',')) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(g.school + ' ' + d.dept) + '">' + (fav ? '★' : '☆') + '</button></div>' +
       '<button type="button" class="b-dept-btn" data-open="' + esc(d.key) + '"' + (info.length ? ' aria-expanded="' + open + '"' : ' disabled') + '><span>' +
         (showSchool ? '<span class="b-dept-school">' + E.highlight(g.school) + (g.joint ? ' · ' + esc(g.joint) : '') + ' · ' + esc(g.status.text) + '</span>' : '') +
-        '<span class="b-dept-name">' + E.highlight(d.dept) + '</span><span class="b-chipline">' + chips + '</span></span>' +
+        '<span class="b-dept-name">' + E.highlight(d.dept) + (d.group ? ' <span class="g-group">' + E.highlight(d.group) + '</span>' : '') + '</span><span class="b-chipline">' + chips + '</span></span>' +
         '<span class="b-q">' + (main.length ? '<b>' + esc(main.map(function (p) { return p.quota; }).join('+')) + '</b><small> 名</small>' : '') +
         extra.map(function (p) { return '<em>' + esc(p.identity + ' ' + p.quota) + '</em>'; }).join('') + '</span></button></div>' +
       (open ? '<div class="b-detail"><dl>' + info.map(function (p) { return '<dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd>'; }).join('') + '</dl></div>' : '') + '</li>';
