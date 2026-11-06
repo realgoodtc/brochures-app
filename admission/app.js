@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、g/g.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-06T12:39:02.365Z
+ * 產生時間:2026-11-06T12:42:17.407Z
  */
 (function () {
   'use strict';
