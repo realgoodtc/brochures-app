@@ -33,13 +33,15 @@
   // 各頁籤(招生管道)的篩選條件與顯示方式(CHANNEL_FIELDS.md、DECISIONS D31)
   //   main / more:主要與「更多篩選」的條件;identities:身分選項;exams:考試方式選項;slug:網址參數
   var TAB_DEFS = {
-    '轉學考': { slug: 'transfer', label: '轉學考', main: ['schoolType', 'grade'], more: ['region', 'identity'], identities: ['一般生', '其他身分'] },
+    '暑轉': { slug: 'transfer', label: '暑轉', main: ['schoolType', 'grade'], more: ['region', 'identity'], identities: ['一般生', '其他身分'] },
     '寒轉': { slug: 'winter', label: '寒轉', main: ['schoolType', 'grade'], more: ['region', 'identity'], identities: ['一般生', '其他身分'] },
     '特殊選才': { slug: 'special', label: '特殊選才', main: ['schoolType'], more: ['region'] },
     '研究所甄試': { slug: 'grad-review', label: '研究所甄試', main: ['schoolType', 'exam'], more: ['region'], exams: ['只審查', '需面試'] },
     '研究所一般生': { slug: 'grad-exam', label: '研究所一般生', main: ['schoolType', 'exam'], more: ['region', 'identity'], exams: ['有筆試', '無筆試'], identities: ['一般生', '在職生'] },
     '在職專班': { slug: 'in-service', label: '在職專班', main: ['schoolType', 'years'], more: ['region'], mainIdentity: '在職生' }
   };
+  // 舊名「轉學考」(D71 改名前發布的資料)也顯示成「暑轉」,網址同樣是 ?tab=transfer
+  TAB_DEFS['轉學考'] = TAB_DEFS['暑轉'];
   function tabDef(ch) { return TAB_DEFS[ch] || { slug: ch, label: ch, main: ['schoolType'], more: ['region'] }; }
 
   // ---------- 狀態 ----------
@@ -108,9 +110,11 @@
       rf.forEach(function (k, i) { r[k] = arr[i]; });
       var s = schools[r.s];
       r.school = s.name; r.type = s.type; r.kind = s.kind; r.region = s.region; r.url = s.url;
+      // 聯招簡稱(D78):例如「台聯大」「科大特選聯招」;同校自己的簡章與聯招分開成兩張卡
+      r.joint = s.joint || ''; r.jointName = s.jointName || '';
       r.start = r.start || s.start; r.end = r.end || s.end;
       r.channel = file.channel; r.year = file.academic_year;
-      r.search = norm(r.school + ' ' + r.department);
+      r.search = norm(r.school + ' ' + r.department + ' ' + r.joint + ' ' + r.jointName);
       return r;
     });
   }
@@ -118,8 +122,8 @@
   function buildGroups(rows) {
     var map = {}, list = [];
     rows.forEach(function (r) {
-      var k = r.channel + '|' + r.school;
-      if (!map[k]) { map[k] = { key: k, channel: r.channel, school: r.school, type: r.type, kind: r.kind, region: r.region, url: r.url, year: r.year, rows: [] }; list.push(map[k]); }
+      var k = r.channel + '|' + r.school + (r.joint ? '|' + r.joint : '');
+      if (!map[k]) { map[k] = { key: k, channel: r.channel, school: r.school, joint: r.joint, jointName: r.jointName, type: r.type, kind: r.kind, region: r.region, url: r.url, year: r.year, rows: [] }; list.push(map[k]); }
       map[k].rows.push(r);
     });
     list.forEach(function (g) {
@@ -130,7 +134,7 @@
       // 新年度尚未公布、以前一年資料補上的學校(D31②):不顯示報名狀態,改標「N 學年度資料」
       g.fallback = state.year === 'auto' && state.latestYear && g.year < state.latestYear;
       g.status = g.fallback ? { key: 'old', text: g.year + ' 學年度資料', left: null } : status(g.start, g.end);
-      g.search = norm(g.school);
+      g.search = norm(g.school + ' ' + (g.joint || '') + ' ' + (g.jointName || ''));
     });
     return list;
   }
@@ -167,8 +171,9 @@
       var schoolsDone = {};
       files.forEach(function (f, i) {
         var list = expandFile(f);
-        if (state.year === 'auto' && i > 0) list = list.filter(function (r) { return !schoolsDone[r.school]; });
-        list.forEach(function (r) { schoolsDone[r.school] = true; });
+        // 學校 + 聯招簡稱:政大自己的特殊選才已公布,科大特選聯招的政大仍用前一年補上(D78)
+        if (state.year === 'auto' && i > 0) list = list.filter(function (r) { return !schoolsDone[r.school + '|' + r.joint]; });
+        list.forEach(function (r) { schoolsDone[r.school + '|' + r.joint] = true; });
         rows = rows.concat(list);
       });
       state.rows = rows;
@@ -531,12 +536,15 @@
 
   /** 原文是否有配分沒有的資訊(與 src/core/exams.js 的 hasExtraInfo 相同規則);沒有就不重複顯示。 */
   function extraInfo(text, exams) {
-    var t = String(text || '');
+    // 合併招生句子(自動備註已有)、「(如…等)」舉例不算額外資訊(2026-10-27)
+    var t = String(text || '').split(/\n|。/).filter(function (s) { return !/(合併|聯合|群組|跨系)招生/.test(s); }).join('')
+      .replace(/\s+/g, '').replace(/[((](如|例如|包括|包含)[^()()]*[))]/g, '');
     if (!t) return false;
     if (!exams || !exams.length) return true;
-    exams.map(function (x) { return String(x[1] || ''); }).filter(Boolean).sort(function (a, b) { return b.length - a.length; })
+    exams.map(function (x) { return String(x[1] || '').replace(/\s+/g, ''); }).filter(Boolean).sort(function (a, b) { return b.length - a.length; })
       .forEach(function (n) { t = t.split(n).join(''); });
-    t = t.replace(/初試|複試|第[一二12]階段|佔|占|總成績|比例|百分比|權重|加權|筆試|口試|面試|審查|共同科目|專門科目|各|計/g, '')
+    t = t.replace(/[\d０-９]+([.．][\d０-９]+)?分(?!鐘)/g, '')
+      .replace(/初試|複試|第[一二12]階段|佔|占|總成績|比例|百分比|權重|加權|筆試|口試|面試|審查|共同科目|專門科目|各|計/g, '')
       .replace(/[\d.%％\s()()\[\]【】:：、,,;;。/\-~～]/g, '');
     return t.length >= 4;
   }
@@ -554,11 +562,14 @@
     var exams = examsText(r0.exams);
     var summary = exams || stageText(r0);
     var keyDates = (r0.dates || []).filter(function (x) { return x[0] && String(x[1]).length === 8; });
+    var oneStage = !r0.stage2 && !(r0.exams || []).some(function (x) { return x[0] === 2; });
     return '<li class="tb-dept' + (open ? ' is-open' : '') + '">' +
       '<div class="tb-dept-main">' +
         '<button type="button" class="tb-star' + (fav ? ' is-on' : '') + '" data-fav="' + esc(d.ids.join(',')) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(g.school + ' ' + d.dept + ' ' + d.grade) + '">' + (fav ? '★' : '☆') + '</button>' +
         '<button type="button" class="tb-dept-btn" data-expand="' + esc(d.key) + '" aria-expanded="' + open + '" aria-controls="' + detailId + '">' +
           '<span class="tb-dept-name">' + highlight(d.dept, ts) +
+            // 今年新增的系所(去年該校有資料、但沒有這個系所;發布時判斷,欄位 isNew)。以去年資料補上的學校不標
+            (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="tb-new-flag" title="去年沒有這個系所">新增</span>' : '') +
             (d.group ? '<span class="tb-group">' + esc(d.group) + '</span>' : '') +
             (d.remarks.length ? '<span class="tb-remark-flag">備註</span>' : '') +
             (ownDate ? '<span class="tb-dept-date">報名 ' + fmtShort(r0.start) + '–' + fmtShort(r0.end) + '</span>' : '') +
@@ -576,7 +587,8 @@
           (r0.elig ? '<dt>報考資格</dt><dd class="tb-pre">' + esc(r0.elig) + '</dd>' : '') +
           (d.rows.length > 1 ? '<dt>名額</dt><dd>' + d.rows.map(function (r) { return esc(r.identity) + ' ' + esc(r.quota) + ' 名'; }).join('、') + '</dd>' : '') +
           (exams ? '<dt>配分</dt><dd>' + esc(exams).replace(/\|/g, '<br>') + '</dd>' : '') +
-          (!exams || extraInfo(r0.stage1, r0.exams) ? '<dt>' + (exams ? '初試說明' : '初試') + '</dt><dd>' + examHtml(d, 'stage1') + '</dd>' : '') +
+          // 沒有分初試/複試時寫「考試說明」,避免讓人以為先筆試再複試(北醫寒轉)
+          (!exams || extraInfo(r0.stage1, r0.exams) ? '<dt>' + (oneStage ? (exams ? '考試說明' : '考試') : (exams ? '初試說明' : '初試')) + '</dt><dd>' + examHtml(d, 'stage1') + '</dd>' : '') +
           (!exams || extraInfo(r0.stage2, r0.exams) ? '<dt>' + (exams ? '複試說明' : '複試') + '</dt><dd>' + examHtml(d, 'stage2') + '</dd>' : '') +
           (keyDates.length ? '<dt>重要日期</dt><dd>' + keyDates.map(function (x) { return esc(x[0]) + ' ' + fmt(String(x[1])); }).join('<br>') + '</dd>' : '') +
           (d.remarks.length ? '<dt>備註</dt><dd class="tb-pre">' + esc(d.remarks.join('\n')) + '</dd>' : '') +
@@ -599,7 +611,8 @@
     return '<article class="tb-card tb-st-' + st.key + '" style="animation-delay:' + Math.min(index * 40, 400) + 'ms">' +
       '<header class="tb-card-head">' +
         '<div class="tb-card-title">' +
-          '<h3 class="tb-school">' + highlight(g.school, ts) + '</h3>' +
+          '<h3 class="tb-school">' + highlight(g.school, ts) +
+            (g.joint ? ' <span class="tb-badge tb-b-joint" title="' + esc(g.jointName || g.joint) + '">' + esc(g.joint) + '</span>' : '') + '</h3>' +
           '<div class="tb-card-sub">' + sub.map(esc).join('<span class="tb-dot">·</span>') + '</div>' +
           (g.fallback ? '<div class="tb-old-note">' + esc(state.latestYear) + ' 學年度簡章尚未公布,以下為 ' + esc(g.year) + ' 學年度資料,僅供參考</div>' : '') +
         '</div>' +
@@ -657,7 +670,7 @@
     rows.forEach(function (r) {
       if (favorites.indexOf(r.id) < 0) return;
       found[r.id] = true;
-      keys[r.channel + r.school + r.department + r.grade + (r.group || '')] = true;
+      keys[r.channel + r.school + r.joint + r.department + r.grade + (r.group || '')] = true;
     });
     // 尚未載入的頁籤中的收藏,每筆算一個
     return Object.keys(keys).length + favorites.filter(function (id) { return !found[id]; }).length;

@@ -120,6 +120,8 @@
 .tb-card-title { min-width: 0; }
 .tb-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .62em; font-weight: 700; white-space: nowrap; vertical-align: 3px; margin-right: 8px; }
 .tb-b-channel { background: var(--tb-admission-bg); color: var(--tb-admission); }
+/* 聯招簡稱(D78):接在校名後 */
+.tb-b-joint { background: #ede9fe; color: #6d28d9; margin: 0 0 0 6px; cursor: help; }
 .tb .tb-school { margin: 0; padding: 0; font-size: 1.2em; font-weight: 800; letter-spacing: -.01em; line-height: 1.35; color: var(--tb-text); border: none; }
 .tb-card-sub { margin-top: 2px; font-size: .84em; color: var(--tb-muted); }
 .tb-dot { margin: 0 6px; color: #cbd5e1; }
@@ -151,6 +153,7 @@
 .tb-dept.is-open .tb-dept-exam { display: none; }
 .tb-group { font-size: .74em; font-weight: 700; color: var(--tb-admission); background: var(--tb-admission-bg); border-radius: 4px; padding: 0 6px; }
 .tb-dept-date { font-size: .78em; font-weight: 600; color: var(--tb-admission); }
+.tb-new-flag { font-size: .7em; font-weight: 700; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 0 5px; }
 .tb-remark-flag { font-size: .7em; font-weight: 700; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; padding: 0 5px; }
 .tb-dept-grade { color: #4b5563; font-size: .92em; }
 .tb-dept-quota { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 4px 8px; white-space: nowrap; }
