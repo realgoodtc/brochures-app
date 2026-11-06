@@ -337,6 +337,12 @@
 #admission-brochures-app .b-card { padding: 0 16px; }
 #admission-brochures-app .b-card:nth-child(even) { background: #f4f8f7; }
 #admission-brochures-app .b-dept.is-picked, #admission-brochures-app .b-card:nth-child(even) .b-dept.is-picked { background: var(--site-teal-soft); }
+#admission-brochures-app .b-card { border-bottom: 0; padding-bottom: 8px; }
+#admission-brochures-app .b-card-head { border-bottom: 0; padding: 20px 0 10px; }
+#admission-brochures-app .b-depts { margin-top: 2px; }
+#admission-brochures-app .b-dept { border-bottom: 0; }
+#admission-brochures-app .b-dept-btn { padding-top: 11px; padding-bottom: 11px; }
+#admission-brochures-app .b-more { padding-top: 6px; }
 #admission-brochures-app .f-more { background: #f6f8f8; }
 #admission-brochures-app .b-detail { background: #f8fafa; }
 #admission-brochures-app .b-card:nth-child(even) .b-detail { background: #eaf1ef; }
