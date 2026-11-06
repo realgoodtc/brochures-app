@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、g/g.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-06T10:20:14.074Z
+ * 產生時間:2026-11-06T10:26:13.548Z
  */
 (function () {
   'use strict';
@@ -473,10 +473,14 @@ window.TBEngine = (function () {
       list.forEach(function (x) {
         if (x[5]) { if (!g[x[5]]) { g[x[5]] = []; parts.push(g[x[5]]); } g[x[5]].push(x); } else parts.push(x);
       });
+      var kidsText = function (x) {
+        var kids = all ? all.filter(function (k) { return k[6] && k[6] === x[1]; }) : [];
+        return kids.length ? '(' + partsText(kids) + ')' : '';
+      };
       return parts.map(function (p) {
-        if (Array.isArray(p[0])) return p.map(function (x) { return x[1]; }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
-        var kids = all ? all.filter(function (k) { return k[6] && k[6] === p[1]; }) : [];
-        return p[1] + w(p) + dt(p) + (kids.length ? '(' + partsText(kids) + ')' : '');
+        // 整組任選(台聯大「選項1:有機化學、無機化學… 選項2:…」):每個選項後面列出組內科目,和 Exams.format 一致(D116)
+        if (Array.isArray(p[0])) return p.map(function (x) { return x[1] + kidsText(x); }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
+        return p[1] + w(p) + dt(p) + kidsText(p);
       }).join('、');
     };
     return stages.map(function (list) {
