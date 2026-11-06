@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、g/g.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-06T10:26:13.548Z
+ * 產生時間:2026-11-06T12:39:02.365Z
  */
 (function () {
   'use strict';
@@ -759,10 +759,14 @@ window.TBEngine = (function () {
     '</div><div id="tb-tray"></div><div id="tb-cmp"></div>';
 
   // ---------- 側欄 ----------
+  // 管道只留一行標題 + 年度(使用者 2026-11-06):暑轉、寒轉寫全名,其他沿用管道名稱
+  var CH_LABEL = { '暑轉': '大學暑假轉學考', '寒轉': '大學寒假轉學考' };
   function renderChannels() {
     var stats = E.channelStats();
     el('tb-channels').innerHTML = stats.map(function (c) {
-      return '<button type="button" class="b-ch" role="tab" aria-selected="' + (c.channel === st.channel) + '" data-ch="' + esc(c.channel) + '"><span><b>' + esc(c.channel) + '</b><small>' + esc(c.hint) + ' · ' + esc(c.years) + '</small></span></button>';
+      var years = String(c.years || '').replace(/\s*學年度$/, '');
+      return '<button type="button" class="b-ch" role="tab" aria-selected="' + (c.channel === st.channel) + '" data-ch="' + esc(c.channel) + '" title="' + esc(c.hint + ' · ' + c.years) + '"><span><b>' + esc(CH_LABEL[c.channel] || c.channel) + '</b>' +
+        (years ? '<small class="g-ch-years">.' + esc(years) + '</small>' : '') + '</span></button>';
     }).join('');
     el('tb-mobileCh').innerHTML = stats.map(function (c) {
       return '<button type="button" role="tab" aria-selected="' + (c.channel === st.channel) + '" data-ch="' + esc(c.channel) + '">' + esc(c.channel) + '</button>';

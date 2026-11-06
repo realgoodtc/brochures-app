@@ -1,4 +1,4 @@
-/* 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/g/g.css 產生,請勿直接修改。 */
+/* 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/g/g.css + web/admission-brochures/site.css 產生,請勿直接修改。 */
 #admission-brochures-app {
   --paper: #faf8f3; --sheet: #fffdf8; --ink: #1c2530; --ink-2: #566070; --ink-3: #808a97; --line: #d9d4c7; --line-2: #ebe6da;
   --red: #a93226; --red-dark: #8e2a20; --red-soft: #f7e7e2; --blue: #1f4e79; --blue-soft: #e4ecf4; --green: #2d6a4f; --amber: #9a5b00; --amber-soft: #f8ecd4;
@@ -7,7 +7,7 @@
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
 }
 #admission-brochures-app, #admission-brochures-app * { box-sizing: border-box; }
-#admission-brochures-app { margin: 0; background: var(--paper); color: var(--ink); font: calc(15px + 2pt)/1.55 var(--sans); }
+#admission-brochures-app { margin: 0; background: var(--paper); color: var(--ink); font: calc(15px + var(--site-font-bump, 2pt))/1.55 var(--sans); }
 #admission-brochures-app button, #admission-brochures-app input, #admission-brochures-app select { font: inherit; color: inherit; }
 #admission-brochures-app button { cursor: pointer; }
 #admission-brochures-app a { color: var(--blue); }
@@ -19,56 +19,56 @@
 #admission-brochures-app .b { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 0 36px; max-width: 1240px; margin: 0 auto; padding: 28px 24px 56px; align-items: start; }
 #admission-brochures-app .b-side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; padding-right: 20px; border-right: 1px solid var(--line); scrollbar-width: thin; }
 #admission-brochures-app .b-brand { padding: 0 0 14px; border-bottom: 2px solid var(--ink); }
-#admission-brochures-app .b-brand h1 { margin: 0; font: 700 calc(26px + 2pt)/1.2 var(--serif); letter-spacing: .04em; }
-#admission-brochures-app .b-sec-title { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 0 6px; color: var(--ink-3); font-size: calc(12.5px + 2pt); font-weight: 700; letter-spacing: .06em; }
+#admission-brochures-app .b-brand h1 { margin: 0; font: 700 calc(26px + var(--site-font-bump, 2pt))/1.2 var(--serif); letter-spacing: .04em; }
+#admission-brochures-app .b-sec-title { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 0 6px; color: var(--ink-3); font-size: calc(12.5px + var(--site-font-bump, 2pt)); font-weight: 700; letter-spacing: .06em; }
 #admission-brochures-app .b-channels { display: grid; }
 #admission-brochures-app .b-ch { display: block; width: 100%; padding: 7px 0 7px 12px; border: 0; border-left: 3px solid transparent; background: none; text-align: left; }
-#admission-brochures-app .b-ch b { display: block; font: 700 calc(16px + 2pt)/1.35 var(--serif); }
-#admission-brochures-app .b-ch small { display: block; color: var(--ink-3); font-size: calc(12px + 2pt); }
+#admission-brochures-app .b-ch b { display: block; font: 700 calc(16px + var(--site-font-bump, 2pt))/1.35 var(--serif); }
+#admission-brochures-app .b-ch small { display: block; color: var(--ink-3); font-size: calc(12px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-ch:hover b { color: var(--red); }
 #admission-brochures-app .b-ch[aria-selected="true"] { border-left-color: var(--red); background: var(--sheet); }
 #admission-brochures-app .b-ch[aria-selected="true"] b { color: var(--red); }
-#admission-brochures-app .b-ghost { padding: 0; border: 0; background: none; color: var(--blue); font-size: calc(13px + 2pt); text-decoration: underline; }
+#admission-brochures-app .b-ghost { padding: 0; border: 0; background: none; color: var(--blue); font-size: calc(13px + var(--site-font-bump, 2pt)); text-decoration: underline; }
 #admission-brochures-app .b-logic { display: inline-flex; margin: 2px 0 8px; border: 1px solid var(--ink-2); border-radius: 3px; overflow: hidden; }
-#admission-brochures-app .b-logic button { padding: 3px 10px; border: 0; background: none; font-size: calc(13px + 2pt); color: var(--ink-2); }
+#admission-brochures-app .b-logic button { padding: 3px 10px; border: 0; background: none; font-size: calc(13px + var(--site-font-bump, 2pt)); color: var(--ink-2); }
 #admission-brochures-app .b-logic button[aria-pressed="true"] { background: var(--ink); color: #fff; }
-#admission-brochures-app .b-pick { margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--line); background: var(--sheet); font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-pick { margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--line); background: var(--sheet); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-pick-g { margin: 0 0 8px; }
-#admission-brochures-app .b-pick-g h4 { margin: 0 0 3px; color: var(--ink-3); font-size: calc(12px + 2pt); }
+#admission-brochures-app .b-pick-g h4 { margin: 0 0 3px; color: var(--ink-3); font-size: calc(12px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-pick label { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
 #admission-brochures-app .b-facet { border-top: 1px solid var(--line-2); }
 #admission-brochures-app .b-facet-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 0; border: 0; background: none; font-weight: 700; text-align: left; }
 #admission-brochures-app .b-facet-head:hover { color: var(--red); }
 #admission-brochures-app .b-facet-head i { font-style: normal; color: var(--ink-3); transition: transform .15s; }
 #admission-brochures-app .b-facet-head[aria-expanded="true"] i { transform: rotate(90deg); }
-#admission-brochures-app .b-facet-badge { margin-left: 6px; color: var(--red); font-size: calc(12.5px + 2pt); }
+#admission-brochures-app .b-facet-badge { margin-left: 6px; color: var(--red); font-size: calc(12.5px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-facet-badge::before { content: "("; }
 #admission-brochures-app .b-facet-badge::after { content: ")"; }
 #admission-brochures-app .b-facet-body { padding: 0 0 12px; }
-#admission-brochures-app .b-check { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: calc(14.5px + 2pt); cursor: pointer; }
+#admission-brochures-app .b-check { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: calc(14.5px + var(--site-font-bump, 2pt)); cursor: pointer; }
 #admission-brochures-app .b-check input { width: 15px; height: 15px; margin: 0; flex-shrink: 0; }
 #admission-brochures-app .b-check span { flex: 1; min-width: 0; }
-#admission-brochures-app .b-check em { font-style: normal; color: var(--ink-3); font-size: calc(12.5px + 2pt); font-variant-numeric: tabular-nums; }
+#admission-brochures-app .b-check em { font-style: normal; color: var(--ink-3); font-size: calc(12.5px + var(--site-font-bump, 2pt)); font-variant-numeric: tabular-nums; }
 #admission-brochures-app .b-check.is-empty { color: var(--ink-3); }
 #admission-brochures-app .b-facet.is-not .b-check input:checked + span { color: var(--red); text-decoration: line-through; }
 #admission-brochures-app .b-facet.is-not .b-check input { accent-color: var(--red); }
 #admission-brochures-app .b-mode { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
 #admission-brochures-app .b-mode[hidden] { display: none; }
-#admission-brochures-app .b-mode button { padding: 1px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--sheet); color: var(--ink-2); font-size: calc(12.5px + 2pt); }
+#admission-brochures-app .b-mode button { padding: 1px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--sheet); color: var(--ink-2); font-size: calc(12.5px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-mode button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 #admission-brochures-app .b-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-#admission-brochures-app .b-chip-opt { padding: 2px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--sheet); font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-chip-opt { padding: 2px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--sheet); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-chip-opt[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
-#admission-brochures-app .b-input { display: flex; align-items: center; gap: 6px; font-size: calc(14px + 2pt); color: var(--ink-2); }
+#admission-brochures-app .b-input { display: flex; align-items: center; gap: 6px; font-size: calc(14px + var(--site-font-bump, 2pt)); color: var(--ink-2); }
 #admission-brochures-app .b-input input { width: 100%; min-width: 0; padding: 5px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--sheet); color: var(--ink); }
 #admission-brochures-app .b-input input[type=number] { width: 76px; flex: none; }
 #admission-brochures-app .b-side-foot { display: none; }
 #admission-brochures-app .b-top { display: flex; gap: 12px; align-items: center; }
 #admission-brochures-app .b-search { flex: 1; min-width: 0; position: relative; }
-#admission-brochures-app .b-search input { width: 100%; padding: 9px 2px 9px 30px; border: 0; border-bottom: 1px solid var(--ink-2); background: none; font-size: calc(17px + 2pt); }
+#admission-brochures-app .b-search input { width: 100%; padding: 9px 2px 9px 30px; border: 0; border-bottom: 1px solid var(--ink-2); background: none; font-size: calc(17px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-search input:focus { outline: none; border-bottom: 2px solid var(--red); padding-bottom: 8px; }
 #admission-brochures-app .b-search svg { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
-#admission-brochures-app .f-favlink { flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--ink-2); font-size: calc(14px + 2pt); }
+#admission-brochures-app .f-favlink { flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--ink-2); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-favlink:hover { color: var(--ink); }
 #admission-brochures-app .f-favlink[aria-pressed="true"] { color: var(--amber); font-weight: 700; }
 #admission-brochures-app .b-consult { flex-shrink: 0; padding: 9px 16px; border-radius: 3px; background: var(--red); color: #fff; text-decoration: none; font-weight: 700; }
@@ -77,59 +77,59 @@
 #admission-brochures-app .b-ribbon { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 20px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
 #admission-brochures-app .b-tile { position: relative; padding: 10px 14px 11px; border: 0; border-right: 1px solid var(--line-2); background: none; text-align: left; }
 #admission-brochures-app .b-tile:last-child { border-right: 0; }
-#admission-brochures-app .b-tile span { display: block; color: var(--ink-2); font-size: calc(13px + 2pt); }
-#admission-brochures-app .b-tile b { display: block; font: 700 calc(26px + 2pt)/1.2 var(--serif); font-variant-numeric: tabular-nums; }
+#admission-brochures-app .b-tile span { display: block; color: var(--ink-2); font-size: calc(13px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .b-tile b { display: block; font: 700 calc(26px + var(--site-font-bump, 2pt))/1.2 var(--serif); font-variant-numeric: tabular-nums; }
 #admission-brochures-app .b-tile:hover { background: var(--sheet); }
 #admission-brochures-app .b-tile[data-k="3 天內截止"] b { color: var(--red); }
 #admission-brochures-app .b-tile[aria-pressed="true"] { background: var(--ink); color: #fff; }
 #admission-brochures-app .b-tile[aria-pressed="true"] span { color: #d5dae0; }
 #admission-brochures-app .b-tile[aria-pressed="true"] b { color: #fff; }
-#admission-brochures-app .b-applied { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin-top: 12px; font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-applied { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin-top: 12px; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-applied[hidden] { display: none; }
 #admission-brochures-app .b-tag { display: inline-flex; align-items: baseline; gap: 2px; color: var(--ink); }
 #admission-brochures-app .b-tag button { padding: 0 3px; border: 0; background: none; color: var(--ink-3); line-height: 1; }
 #admission-brochures-app .b-tag button:hover { color: var(--red); }
 #admission-brochures-app .b-tag.is-not { color: var(--red); text-decoration: line-through; }
-#admission-brochures-app .b-join { color: var(--ink-3); font-size: calc(12.5px + 2pt); }
+#admission-brochures-app .b-join { color: var(--ink-3); font-size: calc(12.5px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; margin-top: 22px; }
-#admission-brochures-app .b-sum { font: 700 calc(20px + 2pt)/1.3 var(--serif); }
-#admission-brochures-app .b-sum b { color: var(--red); font-size: calc(26px + 2pt); font-variant-numeric: tabular-nums; }
-#admission-brochures-app .b-sum-sub { color: var(--ink-2); font-size: calc(13px + 2pt); }
-#admission-brochures-app .b-bar-right { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-sum { font: 700 calc(20px + var(--site-font-bump, 2pt))/1.3 var(--serif); }
+#admission-brochures-app .b-sum b { color: var(--red); font-size: calc(26px + var(--site-font-bump, 2pt)); font-variant-numeric: tabular-nums; }
+#admission-brochures-app .b-sum-sub { color: var(--ink-2); font-size: calc(13px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .b-bar-right { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-seg { display: inline-flex; border: 1px solid var(--ink-2); border-radius: 3px; overflow: hidden; }
-#admission-brochures-app .b-seg button { padding: 4px 11px; border: 0; background: none; font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-seg button { padding: 4px 11px; border: 0; background: none; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
-#admission-brochures-app .f-morebtn { padding: 0; border: 0; background: none; color: var(--blue); font-size: calc(14px + 2pt); }
+#admission-brochures-app .f-morebtn { padding: 0; border: 0; background: none; color: var(--blue); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-morebtn i { display: inline-block; font-style: normal; transition: transform .15s; }
 #admission-brochures-app .f-morebtn[aria-expanded="true"] i { transform: rotate(180deg); }
-#admission-brochures-app .f-more { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line); background: #f4f0e6; font-size: calc(14px + 2pt); }
+#admission-brochures-app .f-more { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line); background: #f4f0e6; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-more[hidden] { display: none; }
 #admission-brochures-app .f-more-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 #admission-brochures-app .f-more-row + .f-more-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
 #admission-brochures-app .f-more-row label { display: inline-flex; gap: 6px; align-items: center; }
-#admission-brochures-app .f-more-label { color: var(--ink-3); font-size: calc(12.5px + 2pt); }
-#admission-brochures-app .b-link { padding: 0; border: 0; background: none; color: var(--blue); font-size: calc(14px + 2pt); text-decoration: underline; }
+#admission-brochures-app .f-more-label { color: var(--ink-3); font-size: calc(12.5px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .b-link { padding: 0; border: 0; background: none; color: var(--blue); font-size: calc(14px + var(--site-font-bump, 2pt)); text-decoration: underline; }
 #admission-brochures-app .b-saved { display: inline-flex; align-items: center; gap: 2px; }
-#admission-brochures-app .b-saved button { padding: 0; border: 0; background: none; color: var(--ink); font-size: calc(14px + 2pt); text-decoration: underline; }
+#admission-brochures-app .b-saved button { padding: 0; border: 0; background: none; color: var(--ink); font-size: calc(14px + var(--site-font-bump, 2pt)); text-decoration: underline; }
 #admission-brochures-app .b-saved button + button { color: var(--ink-3); text-decoration: none; }
 #admission-brochures-app .b-list { margin-top: 10px; border-top: 2px solid var(--ink); }
 #admission-brochures-app .b-card { border-bottom: 1px solid var(--line); }
 #admission-brochures-app .b-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 20px; align-items: end; padding: 18px 0 8px; border-bottom: 1px solid var(--ink); }
-#admission-brochures-app .b-card h3 { margin: 0; font: 700 calc(20px + 2pt)/1.3 var(--serif); }
-#admission-brochures-app .b-joint { margin-left: 8px; padding: 0 5px; border: 1px solid var(--line); color: var(--ink-2); font: 400 calc(12px + 2pt)/1.6 var(--sans); vertical-align: 2px; }
-#admission-brochures-app .b-meta { margin-top: 2px; color: var(--ink-2); font-size: calc(13px + 2pt); }
+#admission-brochures-app .b-card h3 { margin: 0; font: 700 calc(20px + var(--site-font-bump, 2pt))/1.3 var(--serif); }
+#admission-brochures-app .b-joint { margin-left: 8px; padding: 0 5px; border: 1px solid var(--line); color: var(--ink-2); font: 400 calc(12px + var(--site-font-bump, 2pt))/1.6 var(--sans); vertical-align: 2px; }
+#admission-brochures-app .b-meta { margin-top: 2px; color: var(--ink-2); font-size: calc(13px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-when { text-align: right; white-space: nowrap; }
-#admission-brochures-app .b-badge { font-weight: 700; font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-badge { font-weight: 700; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .t-open { color: var(--green); }
 #admission-brochures-app .t-urgent { color: var(--red); }
 #admission-brochures-app .t-soon { color: var(--blue); }
 #admission-brochures-app .t-closed, #admission-brochures-app .t-unknown, #admission-brochures-app .t-old { color: var(--ink-3); }
-#admission-brochures-app .b-when-date { margin-left: 8px; color: var(--ink-3); font-size: calc(13px + 2pt); font-variant-numeric: tabular-nums; }
+#admission-brochures-app .b-when-date { margin-left: 8px; color: var(--ink-3); font-size: calc(13px + var(--site-font-bump, 2pt)); font-variant-numeric: tabular-nums; }
 #admission-brochures-app .b-track { position: relative; width: 160px; height: 2px; margin: 6px 0 0 auto; background: var(--line-2); }
 #admission-brochures-app .b-track span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); }
 #admission-brochures-app .b-track.is-urgent span { background: var(--red); }
 #admission-brochures-app .b-track.is-closed span { background: var(--ink-3); }
-#admission-brochures-app .b-old { grid-column: 1 / -1; color: var(--amber); font-size: calc(13px + 2pt); }
+#admission-brochures-app .b-old { grid-column: 1 / -1; color: var(--amber); font-size: calc(13px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-depts { list-style: none; margin: 0; padding: 0; }
 #admission-brochures-app .b-dept { border-bottom: 1px solid var(--line-2); }
 #admission-brochures-app .b-dept:last-child { border-bottom: 0; }
@@ -139,59 +139,59 @@
 #admission-brochures-app .f-pick { display: inline-flex; padding: 8px 4px; cursor: pointer; }
 #admission-brochures-app .f-pick input { width: 15px; height: 15px; margin: 0; accent-color: var(--blue); cursor: pointer; }
 #admission-brochures-app .f-pick input:disabled { cursor: not-allowed; opacity: .35; }
-#admission-brochures-app .b-star { width: 30px; height: 40px; border: 0; background: none; color: #c4bdae; font-size: calc(17px + 2pt); line-height: 1; }
+#admission-brochures-app .b-star { width: 30px; height: 40px; border: 0; background: none; color: #c4bdae; font-size: calc(17px + var(--site-font-bump, 2pt)); line-height: 1; }
 #admission-brochures-app .b-star[aria-pressed="true"] { color: #c98a00; }
 #admission-brochures-app .b-dept-btn { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; min-width: 0; padding: 10px 4px 10px 6px; border: 0; background: none; text-align: left; }
 #admission-brochures-app .b-dept-btn:not(:disabled):hover .b-dept-name { color: var(--red); }
 #admission-brochures-app .b-dept-btn:disabled { cursor: default; color: inherit; }
 #admission-brochures-app .b-dept-name { font-weight: 700; }
-#admission-brochures-app .b-dept-school { display: block; color: var(--ink-2); font-size: calc(13px + 2pt); font-weight: 400; }
-#admission-brochures-app .b-chipline { display: block; margin-top: 2px; color: var(--ink-2); font-size: calc(13.5px + 2pt); }
-#admission-brochures-app .f-new { display: inline-block; margin-right: 6px; padding: 0 5px; border: 1px solid var(--green); color: var(--green); font-size: calc(12px + 2pt); line-height: 1.5; vertical-align: 1px; }
+#admission-brochures-app .b-dept-school { display: block; color: var(--ink-2); font-size: calc(13px + var(--site-font-bump, 2pt)); font-weight: 400; }
+#admission-brochures-app .b-chipline { display: block; margin-top: 2px; color: var(--ink-2); font-size: calc(13.5px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .f-new { display: inline-block; margin-right: 6px; padding: 0 5px; border: 1px solid var(--green); color: var(--green); font-size: calc(12px + var(--site-font-bump, 2pt)); line-height: 1.5; vertical-align: 1px; }
 #admission-brochures-app .f-info { color: var(--ink-3); }
 #admission-brochures-app .f-info + .f-exam::before { content: " · "; color: var(--ink-3); }
 #admission-brochures-app .b-q { text-align: right; white-space: nowrap; }
-#admission-brochures-app .b-q b { font: 700 calc(21px + 2pt)/1.2 var(--serif); font-variant-numeric: tabular-nums; }
+#admission-brochures-app .b-q b { font: 700 calc(21px + var(--site-font-bump, 2pt))/1.2 var(--serif); font-variant-numeric: tabular-nums; }
 #admission-brochures-app .b-q small { color: var(--ink-3); }
-#admission-brochures-app .b-q em { display: block; color: var(--ink-2); font-size: calc(12px + 2pt); font-style: normal; }
+#admission-brochures-app .b-q em { display: block; color: var(--ink-2); font-size: calc(12px + var(--site-font-bump, 2pt)); font-style: normal; }
 #admission-brochures-app .b-detail { padding: 2px 4px 16px 64px; background: #fdfbf4; }
-#admission-brochures-app .b-detail dl { display: grid; grid-template-columns: 84px 1fr; gap: 5px 12px; margin: 0; font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-detail dl { display: grid; grid-template-columns: 84px 1fr; gap: 5px 12px; margin: 0; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-detail dt { color: var(--ink-2); }
 #admission-brochures-app .b-detail dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-#admission-brochures-app .b-more { display: block; width: 100%; padding: 8px 0 10px 64px; border: 0; background: none; color: var(--blue); font-size: calc(14px + 2pt); text-align: left; text-decoration: underline; }
-#admission-brochures-app .b-hidden { margin: 0; padding: 0 0 10px 64px; color: var(--ink-3); font-size: calc(13px + 2pt); }
+#admission-brochures-app .b-more { display: block; width: 100%; padding: 8px 0 10px 64px; border: 0; background: none; color: var(--blue); font-size: calc(14px + var(--site-font-bump, 2pt)); text-align: left; text-decoration: underline; }
+#admission-brochures-app .b-hidden { margin: 0; padding: 0 0 10px 64px; color: var(--ink-3); font-size: calc(13px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-empty { padding: 36px 20px; border-bottom: 1px solid var(--line); text-align: center; }
-#admission-brochures-app .b-empty h3 { margin: 0 0 6px; font: 700 calc(20px + 2pt)/1.3 var(--serif); }
+#admission-brochures-app .b-empty h3 { margin: 0 0 6px; font: 700 calc(20px + var(--site-font-bump, 2pt))/1.3 var(--serif); }
 #admission-brochures-app .b-empty p { margin: 0 0 14px; color: var(--ink-2); }
 #admission-brochures-app .b-empty a { display: inline-block; padding: 9px 16px; border-radius: 3px; background: var(--red); color: #fff; text-decoration: none; font-weight: 700; }
 #admission-brochures-app .b-pager { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 20px; }
 #admission-brochures-app .b-pager button { min-width: 36px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--sheet); }
 #admission-brochures-app .b-pager button[aria-current] { background: var(--ink); border-color: var(--ink); color: #fff; }
 #admission-brochures-app .b-pager button:disabled { color: var(--ink-3); cursor: default; }
-#admission-brochures-app .b-note { margin: 24px 0 8px; color: var(--ink-2); font-size: calc(13px + 2pt); }
-#admission-brochures-app .b-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 8px 16px; background: var(--ink); color: #fff; border-radius: 3px; font-size: calc(14px + 2pt); z-index: 50; }
-#admission-brochures-app .f-tray { position: fixed; left: 50%; bottom: 16px; z-index: 25; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; max-width: calc(100% - 32px); padding: 8px 10px 8px 16px; border-radius: 3px; background: var(--ink); color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .2); font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-note { margin: 24px 0 8px; color: var(--ink-2); font-size: calc(13px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .b-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 8px 16px; background: var(--ink); color: #fff; border-radius: 3px; font-size: calc(14px + var(--site-font-bump, 2pt)); z-index: 50; }
+#admission-brochures-app .f-tray { position: fixed; left: 50%; bottom: 16px; z-index: 25; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; max-width: calc(100% - 32px); padding: 8px 10px 8px 16px; border-radius: 3px; background: var(--ink); color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .2); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-tray > span:first-child { flex-shrink: 0; white-space: nowrap; }
-#admission-brochures-app .f-tray-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c8ced6; font-size: calc(13px + 2pt); }
+#admission-brochures-app .f-tray-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c8ced6; font-size: calc(13px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-tray button { flex-shrink: 0; padding: 5px 12px; border: 0; border-radius: 3px; background: var(--red); color: #fff; font-weight: 700; }
 #admission-brochures-app .f-tray button:disabled { opacity: .5; cursor: default; }
 #admission-brochures-app .f-tray button + button { background: none; color: #c8ced6; font-weight: 400; }
 #admission-brochures-app .f-cmp { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center; background: rgba(28, 37, 48, .45); }
 #admission-brochures-app .f-cmp-box { width: min(1100px, 100%); max-height: 85vh; overflow: auto; padding: 18px 22px 24px; background: var(--sheet); border-top: 3px solid var(--ink); }
 #admission-brochures-app .f-cmp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
-#admission-brochures-app .f-cmp-head h2 { margin: 0; font: 700 calc(22px + 2pt)/1.3 var(--serif); }
-#admission-brochures-app .f-cmp-head p { margin: 2px 0 0; color: var(--ink-2); font-size: calc(13px + 2pt); }
+#admission-brochures-app .f-cmp-head h2 { margin: 0; font: 700 calc(22px + var(--site-font-bump, 2pt))/1.3 var(--serif); }
+#admission-brochures-app .f-cmp-head p { margin: 2px 0 0; color: var(--ink-2); font-size: calc(13px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-cmp-close { padding: 5px 14px; border: 1px solid var(--ink-2); border-radius: 3px; background: none; }
 #admission-brochures-app .f-cmp-close:hover { background: var(--ink); color: #fff; }
 #admission-brochures-app .f-cmp-scroll { overflow-x: auto; }
-#admission-brochures-app .f-cmp table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: calc(14px + 2pt); border-bottom: 2px solid var(--ink); }
+#admission-brochures-app .f-cmp table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: calc(14px + var(--site-font-bump, 2pt)); border-bottom: 2px solid var(--ink); }
 #admission-brochures-app .f-cmp th, #admission-brochures-app .f-cmp td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
 #admission-brochures-app .f-cmp tbody th { width: 92px; color: var(--ink-2); font-weight: 700; }
-#admission-brochures-app .f-cmp thead th { border-bottom: 1px solid var(--ink); font: 700 calc(15px + 2pt)/1.35 var(--serif); }
-#admission-brochures-app .f-cmp thead th small { display: block; color: var(--ink-2); font: 400 calc(12.5px + 2pt)/1.4 var(--sans); }
-#admission-brochures-app .f-cmp-rm { margin-top: 4px; padding: 0; border: 0; background: none; color: var(--red); font: 400 calc(12.5px + 2pt)/1.4 var(--sans); text-decoration: underline; }
+#admission-brochures-app .f-cmp thead th { border-bottom: 1px solid var(--ink); font: 700 calc(15px + var(--site-font-bump, 2pt))/1.35 var(--serif); }
+#admission-brochures-app .f-cmp thead th small { display: block; color: var(--ink-2); font: 400 calc(12.5px + var(--site-font-bump, 2pt))/1.4 var(--sans); }
+#admission-brochures-app .f-cmp-rm { margin-top: 4px; padding: 0; border: 0; background: none; color: var(--red); font: 400 calc(12.5px + var(--site-font-bump, 2pt))/1.4 var(--sans); text-decoration: underline; }
 #admission-brochures-app .f-cmp tr.is-diff td { background: var(--diff); }
-#admission-brochures-app .f-cmp-legend { margin: 8px 0 0; color: var(--ink-2); font-size: calc(12.5px + 2pt); }
+#admission-brochures-app .f-cmp-legend { margin: 8px 0 0; color: var(--ink-2); font-size: calc(12.5px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-cmp-legend span { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; background: var(--diff); border: 1px solid var(--line); }
 @media (max-width: 900px) {
 #admission-brochures-app .b { display: block; padding: 14px 16px 40px; }
@@ -202,18 +202,18 @@
 #admission-brochures-app .b-side .b-channels, #admission-brochures-app .b-side .b-sec-ch { display: none; }
 #admission-brochures-app .b-mobile-ch { display: flex; gap: 0; margin: 0 -16px 12px; padding: 0 16px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
 #admission-brochures-app .b-mobile-ch::-webkit-scrollbar { display: none; }
-#admission-brochures-app .b-mobile-ch button { position: relative; flex-shrink: 0; padding: 8px 12px; border: 0; background: none; font: 700 calc(15px + 2pt)/1.3 var(--serif); }
+#admission-brochures-app .b-mobile-ch button { position: relative; flex-shrink: 0; padding: 8px 12px; border: 0; background: none; font: 700 calc(15px + var(--site-font-bump, 2pt))/1.3 var(--serif); }
 #admission-brochures-app .b-mobile-ch button[aria-selected="true"] { color: var(--red); }
 #admission-brochures-app .b-mobile-ch button[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 3px; background: var(--red); }
 #admission-brochures-app .b-top { flex-wrap: wrap; }
 #admission-brochures-app .b-search { flex: 1 0 100%; }
-#admission-brochures-app .b-openfilters { display: block; flex: 1; padding: 8px; border: 1px solid var(--ink); border-radius: 3px; background: none; font-weight: 700; font-size: calc(14px + 2pt); }
-#admission-brochures-app .b-consult { flex: 1; padding: 8px; text-align: center; font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-openfilters { display: block; flex: 1; padding: 8px; border: 1px solid var(--ink); border-radius: 3px; background: none; font-weight: 700; font-size: calc(14px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .b-consult { flex: 1; padding: 8px; text-align: center; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .f-favlink { order: 3; flex: 0 0 auto; }
 #admission-brochures-app .b-ribbon { display: flex; margin: 14px -16px 0; overflow-x: auto; scrollbar-width: none; }
 #admission-brochures-app .b-ribbon::-webkit-scrollbar { display: none; }
 #admission-brochures-app .b-tile { flex: 0 0 auto; min-width: 92px; padding: 8px 12px; }
-#admission-brochures-app .b-tile b { font-size: calc(21px + 2pt); }
+#admission-brochures-app .b-tile b { font-size: calc(21px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .b-bar-right { margin-left: 0; width: 100%; }
 #admission-brochures-app .b-card-head { grid-template-columns: 1fr; }
 #admission-brochures-app .f-when { text-align: left; }
@@ -229,12 +229,12 @@
 @media (min-width: 901px) {
 #admission-brochures-app .b-mobile-ch { display: none; }
 }
-#admission-brochures-app .g-notice { margin-top: 16px; padding: 8px 12px; border-left: 3px solid var(--amber); background: var(--amber-soft); color: #5e3a00; font-size: calc(14px + 2pt); }
+#admission-brochures-app .g-notice { margin-top: 16px; padding: 8px 12px; border-left: 3px solid var(--amber); background: var(--amber-soft); color: #5e3a00; font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .g-notice[hidden] { display: none; }
 #admission-brochures-app .b-ribbon.g-tabs { display: flex; flex-wrap: wrap; gap: 0 4px; margin-top: 14px; border-top: 0; border-bottom: 1px solid var(--line); }
-#admission-brochures-app .g-tab { position: relative; padding: 10px 14px 9px; border: 0; background: none; color: var(--ink-2); font-size: calc(15px + 2pt); white-space: nowrap; }
-#admission-brochures-app .g-tab span { display: inline; color: inherit; font-size: calc(15px + 2pt); }
-#admission-brochures-app .g-tab b { display: inline; margin-left: 4px; font: 700 calc(19px + 2pt)/1.2 var(--serif); color: var(--ink); }
+#admission-brochures-app .g-tab { position: relative; padding: 10px 14px 9px; border: 0; background: none; color: var(--ink-2); font-size: calc(15px + var(--site-font-bump, 2pt)); white-space: nowrap; }
+#admission-brochures-app .g-tab span { display: inline; color: inherit; font-size: calc(15px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .g-tab b { display: inline; margin-left: 4px; font: 700 calc(19px + var(--site-font-bump, 2pt))/1.2 var(--serif); color: var(--ink); }
 #admission-brochures-app .g-tab:hover { background: none; color: var(--ink); }
 #admission-brochures-app .b-tile.g-tab[data-k="3 天內截止"] b { color: var(--red); }
 #admission-brochures-app .b-tile.g-tab.is-zero b, #admission-brochures-app .b-tile.g-tab.is-zero[data-k="3 天內截止"] b { color: var(--ink-3); font-weight: 400; }
@@ -245,20 +245,22 @@
 #admission-brochures-app .b-tile.g-tab:last-child { border-right: 0; }
 #admission-brochures-app .b-tile.g-tab { border-right: 0; }
 #admission-brochures-app .b-bar { margin-top: 16px; }
-#admission-brochures-app .b-sum { font-size: calc(18px + 2pt); }
-#admission-brochures-app .b-sum b { font-size: calc(22px + 2pt); }
-#admission-brochures-app .g-sort { display: inline-flex; align-items: center; gap: 2px; color: var(--ink-3); font-size: calc(14px + 2pt); }
+#admission-brochures-app .b-sum { font-size: calc(18px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .b-sum b { font-size: calc(22px + var(--site-font-bump, 2pt)); }
+#admission-brochures-app .g-sort { display: inline-flex; align-items: center; gap: 2px; color: var(--ink-3); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .g-sort select { padding: 2px 18px 2px 2px; border: 0; background: none; color: var(--ink); font-weight: 700; cursor: pointer; }
 #admission-brochures-app .g-view { display: inline-flex; align-items: center; gap: 4px; }
 #admission-brochures-app .g-view i { color: var(--ink-3); font-style: normal; }
-#admission-brochures-app .g-view button { padding: 0; border: 0; background: none; color: var(--ink-3); font-size: calc(14px + 2pt); }
+#admission-brochures-app .g-view button { padding: 0; border: 0; background: none; color: var(--ink-3); font-size: calc(14px + var(--site-font-bump, 2pt)); }
 #admission-brochures-app .g-view button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
 #admission-brochures-app .g-view button:hover { color: var(--ink); }
 #admission-brochures-app .b-list { border-top: 2px solid var(--ink); }
 #admission-brochures-app .b-card-head { border-bottom: 1px solid var(--line); padding-top: 16px; }
+#admission-brochures-app .b-ch b { display: inline; }
+#admission-brochures-app .b-ch .g-ch-years { display: inline; margin-left: 2px; }
 #admission-brochures-app .g-group { margin-left: 4px; font-weight: 400; color: var(--ink-2); }
-#admission-brochures-app .g-oldtag { margin-left: 8px; color: var(--amber); font: 400 calc(12.5px + 2pt)/1.6 var(--sans); }
-#admission-brochures-app .g-newtag { margin-left: 8px; padding: 0 5px; border: 1px solid var(--green); color: var(--green); font: 400 calc(12px + 2pt)/1.6 var(--sans); vertical-align: 2px; }
+#admission-brochures-app .g-oldtag { margin-left: 8px; color: var(--amber); font: 400 calc(12.5px + var(--site-font-bump, 2pt))/1.6 var(--sans); }
+#admission-brochures-app .g-newtag { margin-left: 8px; padding: 0 5px; border: 1px solid var(--green); color: var(--green); font: 400 calc(12px + var(--site-font-bump, 2pt))/1.6 var(--sans); vertical-align: 2px; }
 @media (max-width: 900px) {
 #admission-brochures-app .b-ribbon.g-tabs { flex-wrap: nowrap; margin: 12px -16px 0; padding: 0 6px; overflow-x: auto; }
 #admission-brochures-app .g-tab { padding: 9px 10px 8px; }
@@ -275,57 +277,75 @@
 #admission-brochures-app :where(li) { margin: 0; }
 #admission-brochures-app :where(a) { box-shadow: none; }
 #admission-brochures-app :where(table) { margin: 0; }
-/* 網站版:頁面改成 Elementor 全寬後,內容寬度對齊網站頁首(約 1600px);窄螢幕照舊縮回 */
-#admission-brochures-app .b { max-width: 1640px; }
-/* 「排序」兩字在較窄的寬度被擠成直排 */
-#admission-brochures-app .g-sort { white-space: nowrap; flex-shrink: 0; }
-#admission-brochures-app .b-bar-right > * { flex-shrink: 0; }
-/* ---------- 網站版配色與字型(D114):配合甄戰網站——白底、黑體,選中狀態用網站公告列的青綠色;
-   朱紅只留給「立即洽詢」與急迫的報名狀態。要換色只改這裡的 --site-teal、--site-teal-dark ---------- */
+/* 浮在頁面上的元件蓋過佈景主題的固定頁首 */
+#admission-brochures-app .f-tray, #admission-brochures-app .b-toast { z-index: 99990; }
+#admission-brochures-app .f-cmp { z-index: 99995; }
+@media (max-width: 900px) { #admission-brochures-app .b-side { z-index: 99980; } }
+
+/* ---------- site.css ---------- */
 #admission-brochures-app {
-  --site-teal: #6aa39a; --site-teal-dark: #3b766e; --site-teal-soft: #e9f3f1;
-  --paper: #ffffff; --sheet: #ffffff; --ink: #222a31; --ink-2: #5a636c; --ink-3: #8a929a; --line: #dfe3e6; --line-2: #eef1f2;
-  --blue: var(--site-teal-dark); --blue-soft: var(--site-teal-soft); --diff: #fdf5e2;
-  --serif: var(--sans);
+  --site-teal: #6aa39a;        /* 青綠色(底線、色塊) */
+  --site-teal-dark: #3b766e;   /* 深青綠(文字、按鈕底色;白底上要夠深才好讀) */
+  --site-teal-soft: #e9f3f1;   /* 淡青綠(選中的背景) */
+  --site-font-bump: 2pt;       /* G 版所有字級再加大多少(0pt = 原大小) */
+  --paper: #ffffff; --sheet: #ffffff;
+  --ink: #222a31; --ink-2: #5a636c; --ink-3: #8a929a;   /* 文字:主要 / 次要 / 淡 */
+  --line: #dfe3e6; --line-2: #eef1f2;                    /* 分隔線:一般 / 淡 */
+  --blue: var(--site-teal-dark); --blue-soft: var(--site-teal-soft);
+  --diff: #fdf5e2;             /* 並排比較中「不同」的底色 */
+  --serif: var(--sans);        /* 標題也用黑體 */
   background: #fff;
 }
 #admission-brochures-app :focus-visible { outline-color: var(--site-teal-dark); }
 #admission-brochures-app input[type=checkbox], #admission-brochures-app .b-check input, #admission-brochures-app .f-pick input { accent-color: var(--site-teal-dark); }
-/* 選中:管道、狀態分頁、條件按鈕、分頁、計數 */
+#admission-brochures-app .b { max-width: 1640px; }
+@media (min-width: 901px) {
+#admission-brochures-app .b { grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); }
+}
 #admission-brochures-app .b-ch[aria-selected="true"] { border-left-color: var(--site-teal); background: var(--site-teal-soft); }
 #admission-brochures-app .b-ch[aria-selected="true"] b, #admission-brochures-app .b-ch:hover b { color: var(--site-teal-dark); }
-#admission-brochures-app .b-tile.g-tab[aria-pressed="true"] b { color: var(--site-teal-dark); }
-#admission-brochures-app .b-tile.g-tab[aria-pressed="true"]::after { background: var(--site-teal); }
-#admission-brochures-app .b-logic button[aria-pressed="true"], #admission-brochures-app .b-mode button[aria-pressed="true"], #admission-brochures-app .b-chip-opt[aria-pressed="true"],
-#admission-brochures-app .b-seg button[aria-pressed="true"], #admission-brochures-app .b-pager button[aria-current] { background: var(--site-teal-dark); border-color: var(--site-teal-dark); color: #fff; }
+#admission-brochures-app .b-ribbon.g-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 16px; border: 0; }
+#admission-brochures-app .b-tile.g-tab { padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; text-align: left; white-space: normal; }
+#admission-brochures-app .b-tile.g-tab span { display: block; color: var(--ink-2); font-size: calc(13px + var(--site-font-bump)); }
+#admission-brochures-app .b-tile.g-tab b { display: block; margin: 2px 0 0; font-size: calc(22px + var(--site-font-bump)); font-weight: 700; line-height: 1.2; color: var(--ink); }
+#admission-brochures-app .b-tile.g-tab:hover { border-color: var(--site-teal); background: #fff; }
+#admission-brochures-app .b-tile.g-tab::after, #admission-brochures-app .b-tile.g-tab[aria-pressed="true"]::after { content: none; }
+#admission-brochures-app .b-tile.g-tab[aria-pressed="true"] { border-color: var(--site-teal-dark); background: var(--site-teal-dark); }
+#admission-brochures-app .b-tile.g-tab[aria-pressed="true"] span { color: #e3efed; }
+#admission-brochures-app .b-tile.g-tab[aria-pressed="true"] b { color: #fff; }
+#admission-brochures-app .b-tile.g-tab[data-k="3 天內截止"]:not(.is-zero) b { color: var(--red); }
+#admission-brochures-app .b-tile.g-tab[data-k="3 天內截止"][aria-pressed="true"]:not(.is-zero) b { color: #fff; }
+#admission-brochures-app .b-tile.g-tab.is-zero b { color: var(--ink-3); font-weight: 400; }
+@media (max-width: 900px) {
+#admission-brochures-app .b-ribbon.g-tabs { display: flex; gap: 6px; margin: 12px -16px 0; padding: 0 16px 4px; overflow-x: auto; }
+#admission-brochures-app .b-tile.g-tab { flex: 0 0 auto; min-width: 96px; padding: 8px 10px; }
+#admission-brochures-app .b-tile.g-tab b { font-size: calc(19px + var(--site-font-bump)); }
+}
+#admission-brochures-app .b-logic button[aria-pressed="true"], #admission-brochures-app .b-mode button[aria-pressed="true"], #admission-brochures-app .b-chip-opt[aria-pressed="true"], #admission-brochures-app .b-seg button[aria-pressed="true"], #admission-brochures-app .b-pager button[aria-current] { background: var(--site-teal-dark); border-color: var(--site-teal-dark); color: #fff; }
 #admission-brochures-app .b-logic { border-color: var(--line); }
 #admission-brochures-app .b-sum b { color: var(--site-teal-dark); }
 #admission-brochures-app .b-facet-badge { color: var(--site-teal-dark); }
 #admission-brochures-app .b-facet-head:hover, #admission-brochures-app .b-dept-btn:not(:disabled):hover .b-dept-name { color: var(--site-teal-dark); }
 #admission-brochures-app .b-search input:focus { border-bottom-color: var(--site-teal); }
-#admission-brochures-app .b-dept.is-picked { background: var(--site-teal-soft); }
+#admission-brochures-app .g-sort { white-space: nowrap; flex-shrink: 0; }
+#admission-brochures-app .b-bar-right > * { flex-shrink: 0; }
 @media (max-width: 900px) {
-  #admission-brochures-app .b-mobile-ch button[aria-selected="true"] { color: var(--site-teal-dark); }
-  #admission-brochures-app .b-mobile-ch button[aria-selected="true"]::after { background: var(--site-teal); }
-  #admission-brochures-app .b-side, #admission-brochures-app .b-side-foot { background: #fff; }
+#admission-brochures-app .b-mobile-ch button[aria-selected="true"] { color: var(--site-teal-dark); }
+#admission-brochures-app .b-mobile-ch button[aria-selected="true"]::after { background: var(--site-teal); }
+#admission-brochures-app .b-side, #admission-brochures-app .b-side-foot { background: #fff; }
 }
-/* 淡底區塊改成中性灰 */
+#admission-brochures-app .b-card { padding: 0 16px; }
+#admission-brochures-app .b-card:nth-child(even) { background: #f4f8f7; }
+#admission-brochures-app .b-dept.is-picked, #admission-brochures-app .b-card:nth-child(even) .b-dept.is-picked { background: var(--site-teal-soft); }
 #admission-brochures-app .f-more { background: #f6f8f8; }
 #admission-brochures-app .b-detail { background: #f8fafa; }
+#admission-brochures-app .b-card:nth-child(even) .b-detail { background: #eaf1ef; }
 #admission-brochures-app .b-star { color: #c7cdd2; }
-/* 黑體:標題、校名、數字改粗黑體,字級略收 */
-#admission-brochures-app .b-brand h1 { font-size: calc(24px + 2pt); letter-spacing: .02em; }
-#admission-brochures-app .b-card h3 { font-size: calc(19px + 2pt); }
-#admission-brochures-app .b-tile.g-tab b, #admission-brochures-app .b-q b { font-weight: 700; }
-
-/* 側欄捲軸平常隱藏,滑鼠移到側欄才出現 */
+#admission-brochures-app .b-brand h1 { font-size: calc(24px + var(--site-font-bump)); letter-spacing: .02em; }
+#admission-brochures-app .b-card h3 { font-size: calc(19px + var(--site-font-bump)); }
+#admission-brochures-app .b-q b { font-weight: 700; }
 #admission-brochures-app .b-side { scrollbar-width: none; }
 #admission-brochures-app .b-side:hover { scrollbar-width: thin; scrollbar-color: #c9ced2 transparent; }
 #admission-brochures-app .b-side::-webkit-scrollbar { width: 0; }
 #admission-brochures-app .b-side:hover::-webkit-scrollbar { width: 6px; }
 #admission-brochures-app .b-side:hover::-webkit-scrollbar-thumb { background: #c9ced2; border-radius: 3px; }
-
-/* 浮在頁面上的元件蓋過佈景主題的固定頁首 */
-#admission-brochures-app .f-tray, #admission-brochures-app .b-toast { z-index: 99990; }
-#admission-brochures-app .f-cmp { z-index: 99995; }
-@media (max-width: 900px) { #admission-brochures-app .b-side { z-index: 99980; } }
