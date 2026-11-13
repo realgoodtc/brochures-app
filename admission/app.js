@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、g/g.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-09T11:22:34.532Z
+ * 產生時間:2026-11-13T10:44:13.508Z
  */
 (function () {
   'use strict';
@@ -471,22 +471,53 @@ window.TBEngine = (function () {
   function touch() { memo = null; }
 
   // ---------- 顯示文字 ----------
-  /** [階段, 名稱, 配分, 單位, 日期, 任選組, 所屬整組項目] →「書審 40%、面試 60%(1/26)」。 */
+  // 筆試科目:不是面試、術科、書審類的名稱(「國文」「微積分」);「筆試」本身是整組名稱
+  function isWrittenSubject(n) {
+    return !ORAL.test(n) && !PRACTICAL.test(n) && (SUBJECT.test(n) || !DOCS.test(n)) && !/^筆試/.test(n);
+  }
+
+  /**
+   * [階段, 名稱, 配分, 單位, 日期, 任選組, 所屬整組項目] → 摘要文字(使用者 2026-11-13:「階段 考法(配分):科目」):
+   *   「第一階段 書審 40%(成績單 30%、書審資料 70%)/第二階段 面試 60%(7/15)」;
+   *   沒有整組名稱的筆試科目收成「筆試:國文、英文、微積分」(有配分時「筆試 100%:國文 50%、英文 50%」)。
+   *   只有一個階段時不寫階段。
+   */
   function examsText(exams) {
     if (!exams || !exams.length) return '';
     var w = function (x) { return x[2] === null || x[2] === undefined ? '' : (x[3] === '%' ? ' ' + x[2] + '%' : (x[3] === '倍' ? ' ×' + x[2] : ' ' + x[2])); };
     var dt = function (x) { return x[4] && String(x[4]).length === 8 ? '(' + Number(String(x[4]).slice(4, 6)) + '/' + Number(String(x[4]).slice(6)) + ')' : ''; };
     var stages = [1, 2].map(function (s) { return exams.filter(function (x) { return x[0] === s; }); }).filter(function (a) { return a.length; });
     var partsText = function (list, all) {
-      var parts = [], g = {};
+      var parts = [], g = {}, written = null;
+      var kidsOf = function (x) { return all ? all.filter(function (k) { return k[6] && k[6] === x[1]; }) : []; };
+      // 這個階段第一層全部都是筆試科目(沒有書審、面試混在一起)才收成「筆試：…」,混在一起時分不清哪些是筆試
+      var plain = list.filter(function (x) { return !x[5]; });
+      var allWritten = !!all && plain.length > 0 && plain.every(function (x) { return isWrittenSubject(x[1]) && !kidsOf(x).length; });
       list.forEach(function (x) {
-        if (x[5]) { if (!g[x[5]]) { g[x[5]] = []; parts.push(g[x[5]]); } g[x[5]].push(x); } else parts.push(x);
+        if (x[5]) { if (!g[x[5]]) { g[x[5]] = []; parts.push(g[x[5]]); } g[x[5]].push(x); return; }
+        if (allWritten) {
+          if (!written) { written = { written: [] }; parts.push(written); }
+          written.written.push(x);
+          return;
+        }
+        parts.push(x);
       });
       var kidsText = function (x) {
-        var kids = all ? all.filter(function (k) { return k[6] && k[6] === x[1]; }) : [];
+        var kids = kidsOf(x);
         return kids.length ? '(' + partsText(kids) + ')' : '';
       };
       return parts.map(function (p) {
+        if (p.written) {
+          var subs = p.written;
+          var allPct = subs.every(function (x) { return x[3] === '%' && x[2] !== null && x[2] !== undefined; });
+          var total = allPct ? subs.reduce(function (a, x) { return a + Number(x[2]); }, 0) : null;
+          // 各科各 100 分(中原心理「心理學方法 100%、普通心理學 100%…」)不是比例,不加總
+          if (total !== null && total > 100.01) total = null;
+          var ds = subs.map(dt).filter(Boolean);
+          var oneDate = ds.length === subs.length && ds.every(function (d) { return d === ds[0]; }) ? ds[0] : '';
+          return '筆試' + (total !== null ? ' ' + Math.round(total * 100) / 100 + '%' : '') + oneDate + '：' +
+            subs.map(function (x) { return x[1] + w(x) + (oneDate ? '' : dt(x)); }).join('、');
+        }
         // 整組任選(台聯大「選項1:有機化學、無機化學… 選項2:…」):每個選項後面列出組內科目,和 Exams.format 一致(D116)
         if (Array.isArray(p[0])) return p.map(function (x) { return x[1] + kidsText(x); }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
         return p[1] + w(p) + dt(p) + kidsText(p);
@@ -494,8 +525,8 @@ window.TBEngine = (function () {
     };
     return stages.map(function (list) {
       var text = partsText(list.filter(function (x) { return !x[6]; }), list);
-      return stages.length > 1 ? (list[0][0] === 1 ? '初試:' : '複試:') + text : text;
-    }).join('|');
+      return stages.length > 1 ? (list[0][0] === 1 ? '第一階段 ' : '第二階段 ') + text : text;
+    }).join('／');
   }
   function stageText(r) {
     return [r.stage1, r.stage2 ? (/^複試/.test(r.stage2) ? '' : '複試:') + r.stage2 : ''].filter(Boolean).join(' / ');
@@ -526,7 +557,7 @@ window.TBEngine = (function () {
     if (r.time) out.push(['上課時段', r.time]);
     if (r.elig) out.push(['報考資格', r.elig]);
     if (d.rows.length > 1 && !shown.quota) out.push(['名額', d.rows.map(function (x) { return x.identity + ' ' + x.quota + ' 名'; }).join('、')]);
-    if (exams && !sumFull) out.push(['配分', exams.replace(/\|/g, '\n')]);
+    if (exams && !sumFull) out.push(['配分', exams.replace(/／/g, '\n')]);
     // 沒有結構化配分時,列上摘要就是考試原文
     if (r.stage1 && !(sumFull && !exams)) out.push([exams ? '考試說明' : '初試', r.stage1]);
     if (r.stage2 && !(sumFull && !exams)) out.push(['複試', r.stage2]);
@@ -610,6 +641,11 @@ window.TBEngine = (function () {
     var have = availableFields();
     var mine = customFields[st.channel] || DEFAULT_FIELDS[st.channel] || [];
     return mine.filter(function (k) { return have.indexOf(k) >= 0; });
+  }
+  /** 各管道預設的條件(不看使用者自訂;H 版沒有「自訂項目」,用這個,免得舊的自訂設定把條件藏起來)。 */
+  function defaultShownFields() {
+    var have = availableFields();
+    return (DEFAULT_FIELDS[st.channel] || []).filter(function (k) { return have.indexOf(k) >= 0; });
   }
   function setShownFields(list) { customFields[st.channel] = list; saveJson(FIELDS_KEY, customFields); }
 
@@ -716,7 +752,7 @@ window.TBEngine = (function () {
     summary: summary, summaryLine: summaryLine, quotaParts: quotaParts, detail: detail, OP_NAMES: OP_NAMES,
     opButtons: opButtons, valueEditor: valueEditor, editorClick: editorClick, editorInput: editorInput, pruneEmpty: pruneEmpty, highlight: highlight, brochureUrl: brochureUrl,
     isFav: isFav, toggleFav: toggleFav, favCount: favCount, shareFav: shareFav, copy: copy,
-    saveSet: saveSet, removeSaved: removeSaved, savedSets: savedSets, syncHash: syncHash, hash: hash, shownFields: shownFields, setShownFields: setShownFields,
+    saveSet: saveSet, removeSaved: removeSaved, savedSets: savedSets, syncHash: syncHash, hash: hash, shownFields: shownFields, defaultShownFields: defaultShownFields, setShownFields: setShownFields,
     channelStats: channelStats, channelYears: function () { return channelYears(st.channel); },
     latestYear: function () { return latestYear; }, generatedAt: function () { return manifest.generated_at; }, activeRules: activeRules, statusOf: status,
     savedAll: function () { return saved; }, restore: restore
