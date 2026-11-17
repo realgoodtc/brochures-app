@@ -1,7 +1,7 @@
 /*!
- * 升學簡章查詢(正式前台,G 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、g/g.js 產生,請勿直接修改。
+ * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-13T10:44:13.508Z
+ * 產生時間:2026-11-17T04:51:00.069Z
  */
 (function () {
   'use strict';
@@ -63,7 +63,8 @@ window.TBEngine = (function () {
     grade: { label: '年級', type: 'multi', ops: MULTI_OPS, group: '系所', options: ['二年級', '三年級', '四年級'], get: function (r) { return r.grade ? [r.grade] : []; } },
     identity: { label: '身分', type: 'multi', ops: MULTI_OPS, group: '系所', get: function (r) { return r.x.identity ? [r.x.identity] : []; } },
     quota: { label: '名額', type: 'num', unit: '名', ops: [['gte', '至少'], ['lte', '不超過'], ['between', '介於']], group: '系所', presets: [5, 10, 20, 50], get: function (r) { return +r.quota; } },
-    group: { label: '招生組別', type: 'text', ops: [['has', '包含'], ['hasNot', '不包含']], group: '系所', placeholder: '例如:資安、英語', get: function (r) { return r.group; } },
+    // D167:組別寫在系名括號裡的(「資訊工程學系(資安組)」)不另記組別,篩選也看系名括號
+    group: { label: '招生組別', type: 'text', ops: [['has', '包含'], ['hasNot', '不包含']], group: '系所', placeholder: '例如:資安、英語', get: function (r) { return (r.group || '') + ' ' + (String(r.department || '').match(/[((][^()()]*[))]/g) || []).join(' '); } },
     tags: { label: '備註特性', type: 'multi', ops: MULTI_ALL_OPS, multiValued: true, group: '系所', options: REMARK_TAGS.map(function (t) { return t.t; }), get: function (r) { return r.x.tags; } },
     isNew: { label: '今年新增系所', type: 'multi', ops: MULTI_OPS, group: '系所', options: ['新增'], get: function (r) { return r.isNew === 1 ? ['新增'] : []; } },
     // 考試方式(使用者 2026-11-09):勾選的是「可以接受的項目」,只列出考試項目都在勾選範圍內的系組;只勾書審 = 只看書審的系組
@@ -342,6 +343,12 @@ window.TBEngine = (function () {
       if (!map[k]) { map[k] = { key: r.id, dept: r.department, grade: r.grade, group: r.group || '', rows: [], g: r.g }; out.push(map[k]); }
       map[k].rows.push(r);
     });
+    // 同一學校的系組依年級排(二年級全部在前、再三年級……,使用者 2026-11-17:不要二三年級交叉);同年級維持簡章順序
+    var GRADE_ORDER = { '': 0, '二年級': 2, '三年級': 3, '四年級': 4 };
+    var gradeRank = function (g) { return GRADE_ORDER[g || ''] !== undefined ? GRADE_ORDER[g || ''] : 9; };
+    out = out.map(function (d, i) { return { d: d, i: i }; })
+      .sort(function (a, b) { return (gradeRank(a.d.grade) - gradeRank(b.d.grade)) || (a.i - b.i); })
+      .map(function (x) { return x.d; });
     out.forEach(function (d) {
       d.rows.sort(function (a, b) { return (isMainIdentity(a) ? 0 : 1) - (isMainIdentity(b) ? 0 : 1); });
       d.ids = d.rows.map(function (r) { return r.id; });
@@ -762,12 +769,16 @@ window.TBEngine = (function () {
 
   if (root.getAttribute('data-consult')) window.TBEngine.CONSULT_URL = root.getAttribute('data-consult');
 
-/* G 版:F 版再精簡上方區塊——報名狀態改成文字分頁(筆數只出現一次)、前一年資料整頁提示一次、排序與檢視改成文字、學校列只留必要資訊、線條減量 */
+﻿/* J 版(2026-11-17,使用者:以「電腦手機版面3」的樣式為基底,加上其他版面的功能優點)
+   外觀與架構取自版面 3:上方控制卡(管道膠囊、搜尋、報名狀態、排序、立即洽詢)、白底圓角比較表格、青綠主色、黑體。
+   功能取自其他版:篩選條件與選項筆數(B/F,改成下拉式)、考試方式只考勾選項目與同時符合/符合任一(H)、報名狀態筆數(G)、
+   依學校分組與學校標題(H)、依學校/依校系、收藏與分享收藏(H)、並排比較表(D/F)、原地展開(版面 3)、
+   手機底部滑出詳情與底部操作列(版面 2)。程式由 I 版複製,改了版面骨架、管道、篩選下拉。 */
 (function () {
   'use strict';
   var E = window.TBEngine, st = E.st, esc = E.esc;
   var app = window.TB_SITE_ROOT;
-  var ui = { page: 1, open: {}, showAll: {}, fold: {}, picker: false, timer: null, pick: {}, pickOrder: [], cmpOpen: false, more: false, oldMany: false };
+  var ui = { page: 1, open: {}, showAll: {}, fold: {}, picker: false, timer: null, pick: {}, pickOrder: [], cmpOpen: false, more: false, oldMany: false, openFacet: null };
   var MAX_CMP = 4;
   var ROWS_COLLAPSED = 6, DEPTS_PER_PAGE = 30, SCHOOLS_PER_PAGE = 10;
   var RIBBON = ['報名中', '3 天內截止', '尚未開始', '已截止'];
@@ -781,33 +792,31 @@ window.TBEngine = (function () {
   function opt(v, t, cur) { return '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>'; }
 
   app.innerHTML =
-    '<div class="b">' +
-      '<aside class="b-side" id="tb-side" aria-label="招生管道與篩選條件">' +
-        // 管道與篩選條件分成兩個區塊(使用者 2026-11-09):管道是「單選」,做成有圓點的選項
-        '<section class="b-panel b-panel-ch" aria-labelledby="tb-chTitle"><h2 class="b-panel-title b-sec-ch" id="tb-chTitle">選擇招生管道</h2>' +
-        '<nav class="b-channels" id="tb-channels" role="tablist" aria-label="招生管道"></nav></section>' +
-        '<section class="b-panel b-panel-f" aria-labelledby="tb-fTitle"><div class="b-panel-title"><h2 id="tb-fTitle">篩選條件</h2><button type="button" class="b-ghost" id="tb-pickToggle" aria-expanded="false">自訂項目</button></div>' +
-        '<div id="tb-picker"></div>' +
-        '<div class="b-logic" role="group" aria-label="條件之間的關係" id="tb-logic"></div>' +
-        '<div id="tb-facets"></div></section>' +
-        '<div class="b-side-foot"><button type="button" id="tb-closeSide"></button></div>' +
-      '</aside>' +
-      '<main>' +
-        '<div class="b-mobile-ch" id="tb-mobileCh" role="tablist" aria-label="招生管道"></div>' +
-        '<div class="b-top"><div class="b-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>' +
-          '<label class="sr" for="tb-q">搜尋校名、系名或考科</label><input type="search" id="tb-q" placeholder="搜尋校名、系名或考科,例如:清大 資工、微積分、書審" autocomplete="off"></div>' +
+    '<div class="j">' +
+      // 上方控制卡(版面 3):管道膠囊 → 搜尋、報名狀態(含筆數)、排序、收藏、立即洽詢 → 篩選條件(下拉式,含選項筆數)
+      '<header class="j-control">' +
+        '<nav class="j-channels" id="tb-channels" role="tablist" aria-label="招生管道"></nav>' +
+        '<div class="j-toolbar"><div class="b-search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>' +
+          '<label class="sr" for="tb-q">搜尋校名、系名或考科</label><input type="search" id="tb-q" placeholder="搜尋校名、系名或考科(例如:清大、資工、書審)" autocomplete="off"></div>' +
+          '<div class="j-status" id="tb-ribbon" role="group" aria-label="依報名狀態篩選"></div>' +
+          '<div class="j-sort" id="tb-bar"></div>' +
           '<button type="button" class="f-favlink" id="tb-favOnly" aria-pressed="false">★ 收藏 <span id="tb-favN">0</span></button>' +
-          '<button type="button" class="b-openfilters" id="tb-openSide">篩選條件</button>' +
           '<a class="b-consult" href="' + esc(E.CONSULT_URL) + '" target="_blank" rel="noopener noreferrer">立即洽詢書審口試</a></div>' +
-        '<div class="b-ribbon g-tabs" id="tb-ribbon" role="group" aria-label="依報名狀態篩選"></div>' +
-        '<div class="b-applied" id="tb-applied" hidden></div>' +
-        '<div class="b-bar" id="tb-bar" role="status" aria-live="polite"></div>' +
-        '<div class="f-more" id="tb-more" hidden></div>' +
-        '<div class="b-list" id="tb-list"></div>' +
-        '<nav class="b-pager" id="tb-pager" aria-label="分頁"></nav>' +
-        '<p class="b-note">提醒:' + esc(E.NOTE) + '</p>' +
-      '</main>' +
-    '</div><div id="tb-tray"></div><div id="tb-cmp"></div>';
+        '<div class="j-filters" id="tb-side" aria-label="篩選條件"><div class="j-filters-head"><b>篩選</b><div class="b-logic" role="group" aria-label="條件之間的關係" id="tb-logic"></div></div>' +
+          '<div id="tb-picker"></div><div class="j-facets" id="tb-facets"></div>' +
+          '<div class="b-side-foot"><button type="button" id="tb-closeSide"></button></div></div>' +
+      '</header>' +
+      // 依學校 / 依校系、已套用的條件、分享收藏
+      '<div class="j-subbar"><div class="h-seg" id="tb-viewSeg" role="group" aria-label="顯示方式"></div><div class="b-applied" id="tb-applied" hidden></div><div class="h-favshare" id="tb-favShare"></div></div>' +
+      '<main class="j-matrix" aria-label="招生系組"><div id="tb-list"></div></main>' +
+      '<nav class="b-pager" id="tb-pager" aria-label="分頁"></nav>' +
+      '<p class="b-note">提醒:' + esc(E.NOTE) + '</p>' +
+      '<div id="tb-mobileCh" hidden></div><button type="button" id="tb-openSide" hidden></button>' +
+    '</div><div id="tb-tray"></div><div id="tb-cmp"></div><div id="tb-sheet"></div>' +
+    // 手機底部固定操作列(取自版面 2)
+    '<div class="i-bottombar"><button type="button" id="tb-openSide2">篩選條件</button><a href="' + esc(E.CONSULT_URL) + '" target="_blank" rel="noopener noreferrer">立即洽詢書審口試</a></div>';
+
+  function isMobile() { return window.matchMedia('(max-width: 900px)').matches; }
 
   // ---------- 側欄 ----------
   // 管道只留名稱(使用者 2026-11-09 拿掉年度):暑轉、寒轉寫全名,其他沿用管道名稱
@@ -815,7 +824,8 @@ window.TBEngine = (function () {
   function renderChannels() {
     var stats = E.channelStats();
     el('tb-channels').innerHTML = stats.map(function (c) {
-      return '<button type="button" class="b-ch" role="tab" aria-selected="' + (c.channel === st.channel) + '" data-ch="' + esc(c.channel) + '" title="' + esc(c.hint) + '"><i class="b-ch-dot" aria-hidden="true"></i><b>' + esc(CH_LABEL[c.channel] || c.channel) + '</b></button>';
+      // J 版:版面 3 的管道膠囊(全名,不顯示年度)
+      return '<button type="button" class="j-ch" role="tab" aria-selected="' + (c.channel === st.channel) + '" data-ch="' + esc(c.channel) + '" title="' + esc(c.hint) + '">' + esc(CH_LABEL[c.channel] || c.channel) + '</button>';
     }).join('');
     el('tb-mobileCh').innerHTML = stats.map(function (c) {
       return '<button type="button" role="tab" aria-selected="' + (c.channel === st.channel) + '" data-ch="' + esc(c.channel) + '">' + esc(c.channel) + '</button>';
@@ -823,21 +833,11 @@ window.TBEngine = (function () {
   }
 
   // 報名狀態在主區的計數磚,不重複放側欄
-  function facetKeys() { return E.shownFields().filter(function (k) { return k !== 'status'; }); }
+  // H 版沒有「自訂項目」:一律用各管道預設條件,不讀以前存的自訂設定
+  function facetKeys() { return E.defaultShownFields().filter(function (k) { return k !== 'status'; }); }
 
-  function renderPicker() {
-    var box = el('tb-picker');
-    el('tb-pickToggle').setAttribute('aria-expanded', ui.picker);
-    el('tb-pickToggle').textContent = ui.picker ? '完成' : '自訂項目';
-    if (!ui.picker) { box.innerHTML = ''; return; }
-    var cur = E.shownFields(), groups = {};
-    E.availableFields().filter(function (k) { return k !== 'status'; }).forEach(function (k) { var g = E.FIELDS[k].group; (groups[g] = groups[g] || []).push(k); });
-    box.innerHTML = '<div class="b-pick">' + Object.keys(groups).map(function (g) {
-      return '<div class="b-pick-g"><h4>' + esc(g) + '</h4>' + groups[g].map(function (k) {
-        return '<label><input type="checkbox" data-pick="' + k + '"' + (cur.indexOf(k) >= 0 ? ' checked' : '') + '>' + esc(E.FIELDS[k].label) + '</label>';
-      }).join('') + '</div>';
-    }).join('') + '</div>';
-  }
+  // J 版沒有「自訂項目」:篩選條件一律用各管道預設
+  function renderPicker() { el('tb-picker').innerHTML = ''; }
 
   function modeHtml(key, rule) {
     var f = E.FIELDS[key];
@@ -851,9 +851,11 @@ window.TBEngine = (function () {
   function facetBody(key) {
     var f = E.FIELDS[key], rule = E.fieldRule(key), v = rule ? rule.v : E.emptyValue(key);
     if (f.type === 'multi') {
-      return E.optionsFor(key).map(function (o) {
+      // 選項 5 個以內(地區除外)做成膠囊按鈕,數字滑鼠移上才看得到;選項多的維持勾選清單
+      var opts = E.optionsFor(key), chips = opts.length <= 5 && key !== 'region';
+      return '<div class="h-opts' + (chips ? ' is-chips' : '') + '">' + opts.map(function (o) {
         return '<label class="b-check" data-opt="' + esc(o) + '"><input type="checkbox" data-val="' + esc(o) + '"' + (v.indexOf(o) >= 0 ? ' checked' : '') + '><span>' + esc(o) + '</span><em data-count></em></label>';
-      }).join('') + modeHtml(key, rule);
+      }).join('') + '</div>' + modeHtml(key, rule);
     }
     if (f.type === 'text') return '<div class="b-input"><input type="text" data-text="' + key + '" aria-label="' + esc(f.label) + '" placeholder="' + esc(f.placeholder || '') + '" value="' + esc(v) + '"></div>' + modeHtml(key, rule);
     if (f.type === 'num') {
@@ -872,7 +874,8 @@ window.TBEngine = (function () {
     var keys = facetKeys();
     st.rules.forEach(function (r) { if (r.field !== 'status' && keys.indexOf(r.field) < 0) keys.push(r.field); });
     el('tb-facets').innerHTML = keys.map(function (k, i) {
-      var open = ui.fold[k] === undefined ? i < 4 || !!E.fieldRule(k) : !ui.fold[k];
+      // J 版:篩選條件是下拉選單,一次只開一個(手機的篩選面板由 CSS 全部展開)
+      var open = ui.openFacet === k;
       return '<section class="b-facet" data-facet="' + k + '"><button type="button" class="b-facet-head" data-fold="' + k + '" aria-expanded="' + open + '"><span>' + esc(E.FIELDS[k].label) + '<span class="b-facet-badge" data-badge hidden></span></span><i aria-hidden="true">›</i></button>' +
         '<div class="b-facet-body"' + (open ? '' : ' hidden') + '>' + facetBody(k) + '</div></section>';
     }).join('');
@@ -897,6 +900,7 @@ window.TBEngine = (function () {
       box.querySelectorAll('[data-opt]').forEach(function (l) {
         var c = counts[l.dataset.opt] || 0;
         l.querySelector('[data-count]').textContent = num(c);
+        l.title = num(c) + ' 個系組';
         l.classList.toggle('is-empty', !c);
       });
     });
@@ -932,30 +936,20 @@ window.TBEngine = (function () {
   }
 
   function renderBar(res) {
-    var years = E.channelYears(), isDept = st.view === 'dept';
-    var yearCtl = years.length > 1 ? '<label>學年度 <select id="tb-year">' + opt('auto', years[0].academic_year + '(未公布補 ' + years[1].academic_year + ')', st.year) +
-      years.map(function (y) { return opt(y.academic_year, '只看 ' + y.academic_year, st.year); }).join('') + '</select></label>' : '';
-    // 系組數已在狀態分頁,校數也不顯示(使用者 2026-11-09);排序、檢視改成文字樣式
-    el('tb-bar').innerHTML = '<div class="b-bar-right"><label class="g-sort">排序 <select id="tb-sort">' + E.SORTS.map(function (s) { return opt(s[0], s[1], st.sort); }).join('') + '</select></label>' +
-      '<span class="g-view" role="group" aria-label="顯示方式"><button type="button" data-view="school" aria-pressed="' + !isDept + '">依學校</button><i aria-hidden="true">·</i><button type="button" data-view="dept" aria-pressed="' + isDept + '">依校系</button></span>' +
-      '<button type="button" class="f-morebtn" id="tb-moreBtn" aria-expanded="' + ui.more + '" aria-controls="tb-more">更多選項 <i aria-hidden="true">▾</i></button></div>';
-    var more = el('tb-more');
-    more.hidden = !ui.more;
-    more.innerHTML = '<div class="f-more-row">' + yearCtl +
-      '<label><input type="checkbox" id="tb-hideClosed"' + (st.hideClosed ? ' checked' : '') + '>隱藏已截止</label>' +
-      '<label><input type="checkbox" id="tb-fuzzy"' + (st.fuzzy ? ' checked' : '') + '>模糊比對</label></div><div class="f-more-row" id="tb-saves"></div>';
+    var isDept = st.view === 'dept';
+    // 系組數已在狀態分頁,校數也不顯示;狀態列右邊只留排序
+    el('tb-bar').innerHTML = '<div class="b-bar-right"><label class="g-sort">排序 <select id="tb-sort">' + E.SORTS.map(function (s) { return opt(s[0], s[1], st.sort); }).join('') + '</select></label></div>';
+    el('tb-viewSeg').innerHTML = '<button type="button" data-view="school" aria-pressed="' + !isDept + '">依學校</button><button type="button" data-view="dept" aria-pressed="' + isDept + '">依校系</button>';
     el('tb-favOnly').setAttribute('aria-pressed', st.favOnly);
     el('tb-favN').textContent = E.favCount();
-    el('tb-openSide').textContent = '篩選條件' + (E.activeRules().length ? '(' + E.activeRules().length + ')' : '');
+    el('tb-openSide').textContent = el('tb-openSide2').textContent = '篩選條件' + (E.activeRules().length ? '(' + E.activeRules().length + ')' : '');
     el('tb-closeSide').textContent = '查看 ' + num(res.depts.length) + ' 個系組';
   }
 
+  // 收藏分享:一直顯示(使用者 2026-11-09,取代「更多選項」);還沒收藏時按下去提示先收藏
   function renderSaves() {
-    var mine = E.savedAll().map(function (s, i) { return { s: s, i: i }; }).filter(function (x) { return x.s.state.c === st.channel; });
-    var favs = E.favCount();
-    el('tb-saves').innerHTML = '<span class="f-more-label">條件</span><button type="button" class="b-link" id="tb-save">儲存這組條件</button><button type="button" class="b-link" id="tb-link">複製條件連結</button>' +
-      mine.map(function (x) { return '<span class="b-saved"><button type="button" data-load="' + x.i + '">' + esc(x.s.name) + '</button><button type="button" data-unsave="' + x.i + '" aria-label="刪除 ' + esc(x.s.name) + '">×</button></span>'; }).join('') +
-      (favs ? '<span class="f-more-label">收藏</span><button type="button" class="b-link" data-share="copy">複製收藏連結</button><button type="button" class="b-link" data-share="line">LINE</button><button type="button" class="b-link" data-share="fb">Facebook</button>' : '');
+    if (el('tb-favShare').innerHTML) return;
+    el('tb-favShare').innerHTML = '<span>分享收藏</span><button type="button" class="b-link" data-share="copy">複製連結</button><button type="button" class="b-link" data-share="line">LINE</button><button type="button" class="b-link" data-share="fb">Facebook</button>';
   }
 
   function track(g) {
@@ -967,26 +961,68 @@ window.TBEngine = (function () {
     return '<div class="b-track f-line ' + (a.key === 'urgent' ? 'is-urgent' : a.key === 'closed' ? 'is-closed' : '') + '" role="img" aria-label="報名期間已過 ' + Math.round(pct) + '%"><span style="width:' + pct + '%"></span></div>';
   }
 
-  function deptHtml(d, showSchool) {
-    var g = d.g, fav = E.isFav(d), r0 = d.rows[0], parts = E.quotaParts(d);
-    var info = E.detail(d, { quota: true, summaryMax: 70 }), open = !!ui.open[d.key] && info.length > 0;
-    var main = parts.filter(function (p) { return p.main; }), extra = parts.filter(function (p) { return !p.main; });
-    // 年級、組別、標籤用「·」連成一行小字,只有「新增」保留細框標籤(A 的做法)
-    // 組別接在系名後面;「部分英語授課」這類備註標籤不放在列上(展開後的備註看得到),列上只留年級與考科
-    var info1 = [d.grade].filter(Boolean).map(esc).join(' · ');
-    var exam = E.summaryLine(d, 70).text;
-    var chips = (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '') +
-      (info1 ? '<span class="f-info">' + info1 + '</span>' : '') +
-      (exam ? '<span class="f-exam">' + E.highlight(exam) + '</span>' : '');
-    return '<li class="b-dept' + (ui.pick[d.key] ? ' is-picked' : '') + '"><div class="b-dept-row"><div class="f-lead">' + pickHtml(d) +
-      '<button type="button" class="b-star" data-fav="' + esc(d.ids.join(',')) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(g.school + ' ' + d.dept) + '">' + (fav ? '★' : '☆') + '</button></div>' +
-      '<button type="button" class="b-dept-btn" data-open="' + esc(d.key) + '"' + (info.length ? ' aria-expanded="' + open + '"' : ' disabled') + '><span>' +
-        (showSchool ? '<span class="b-dept-school">' + E.highlight(g.school) + (g.joint ? ' · ' + esc(g.joint) : '') + ' · ' + esc(g.status.text) + '</span>' : '') +
-        '<span class="b-dept-name">' + E.highlight(d.dept) + (d.group ? ' <span class="g-group">' + E.highlight(d.group) + '</span>' : '') + '</span><span class="b-chipline">' + chips + '</span></span>' +
-        '<span class="b-q">' + (main.length ? '<b>' + esc(main.map(function (p) { return p.quota; }).join('+')) + '</b><small> 名</small>' : '') +
-        extra.map(function (p) { return '<em>' + esc(p.identity + ' ' + p.quota) + '</em>'; }).join('') + '</span></button></div>' +
-      (open ? '<div class="b-detail"><dl>' + info.map(function (p) { return '<dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd>'; }).join('') + '</dl></div>' : '') + '</li>';
+  // ---------- 比較表格的一列(版面 3) ----------
+  function modesOf(d) {
+    var out = [];
+    d.rows.forEach(function (r) { r.x.modes.forEach(function (m) { if (out.indexOf(m) < 0) out.push(m); }); });
+    return E.FIELDS.examMode.options.filter(function (m) { return out.indexOf(m) >= 0; });
   }
+  function quotaHtml(d) {
+    var parts = E.quotaParts(d), main = parts.filter(function (p) { return p.main; }), extra = parts.filter(function (p) { return !p.main; });
+    return (main.length ? '<b>' + esc(main.map(function (p) { return p.quota; }).join('+')) + '</b><small> 名</small>' : '<small>–</small>') +
+      extra.map(function (p) { return '<em>' + esc(p.identity + ' ' + p.quota) + '</em>'; }).join('');
+  }
+  function cmpBtn(d, cls) {
+    var on = !!ui.pick[d.key], full = !on && ui.pickOrder.length >= MAX_CMP;
+    return '<button type="button" class="i-cmp ' + (cls || '') + '" data-cmpbtn="' + esc(d.key) + '" aria-pressed="' + on + '"' + (full ? ' title="最多比較 ' + MAX_CMP + ' 個系組"' : '') +
+      ' aria-label="' + (on ? '取消比較 ' : '加入比較 ') + esc(d.g.school + ' ' + d.dept) + '">' + (on ? '✓ 比較中' : '+ 比較') + '</button>';
+  }
+  function favBtn(d, withText) {
+    var fav = E.isFav(d);
+    return '<button type="button" class="b-star i-fav" data-fav="' + esc(d.ids.join(',')) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? '取消收藏 ' : '收藏 ') + esc(d.g.school + ' ' + d.dept) + '">' +
+      (fav ? '★' : '☆') + (withText ? (fav ? ' 已收藏' : ' 收藏') : '') + '</button>';
+  }
+  function detailDl(info) { return '<dl>' + info.map(function (p) { return '<dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd>'; }).join('') + '</dl>'; }
+
+  function deptHtml(d, showSchool) {
+    var g = d.g;
+    var info = E.detail(d, { quota: true, summaryMax: 70 }), open = !!ui.open[d.key] && info.length > 0;
+    var exam = E.summaryLine(d, 80).text, modes = modesOf(d);
+    var sub = [d.grade].filter(Boolean).map(esc).join(' · ') + (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '');
+    // 整列可點:電腦原地展開資格與備註,手機從底部滑出詳情;比較、收藏按鈕在最右欄
+    return '<li class="b-dept i-row' + (ui.pick[d.key] ? ' is-picked' : '') + (open ? ' is-open' : '') + '">' +
+      '<div class="i-grid"' + (info.length ? ' data-open="' + esc(d.key) + '" role="button" tabindex="0" aria-expanded="' + open + '"' : '') + '>' +
+        '<div class="i-c-dept">' +
+          (showSchool ? '<span class="b-dept-school">' + E.highlight(g.school) + (g.joint ? ' · ' + esc(g.joint) : '') + ' · ' + esc(g.status.text) + '</span>' : '') +
+          '<span class="b-dept-name">' + E.highlight(d.dept) + (d.group ? ' <span class="g-group">' + E.highlight(d.group) + '</span>' : '') + '</span>' +
+          (sub ? '<span class="i-sub">' + sub + '</span>' : '') + '</div>' +
+        '<div class="i-c-exam">' + (modes.length ? '<span class="i-modes">' + modes.map(function (m) { return '<span class="i-mode">' + esc(m) + '</span>'; }).join('') + '</span>' : '') +
+          (exam ? '<span class="i-exam">' + E.highlight(exam) + '</span>' : '') + '</div>' +
+        '<div class="i-c-quota b-q">' + quotaHtml(d) + '</div>' +
+        '<div class="i-c-act">' + cmpBtn(d) + favBtn(d) + '</div>' +
+      '</div>' +
+      (open ? '<div class="b-detail i-detail">' + detailDl(info) + '</div>' : '') + '</li>';
+  }
+
+  // ---------- 手機:底部滑出詳情(取自版面 2) ----------
+  function renderSheet() {
+    var box = el('tb-sheet');
+    var d = ui.sheet && E.compute().depts.filter(function (x) { return x.key === ui.sheet; })[0];
+    if (!d) { ui.sheet = null; box.innerHTML = ''; document.documentElement.classList.remove('i-noscroll'); return; }
+    // 名額已在上方大字顯示,詳情不再重複
+    var g = d.g, url = E.brochureUrl(g), info = E.detail(d, { quota: true }).filter(function (p) { return p[0] !== '名額'; });
+    document.documentElement.classList.add('i-noscroll');
+    box.innerHTML = '<div class="i-sheet" role="dialog" aria-modal="true" aria-labelledby="tb-sheetTitle"><div class="i-sheet-box">' +
+      '<div class="i-sheet-head"><div><div class="i-sheet-school">' + esc([g.school, g.type, g.region].filter(Boolean).join(' · ')) + '</div>' +
+        '<h2 id="tb-sheetTitle">' + esc(d.dept) + (d.group ? ' <span class="g-group">' + esc(d.group) + '</span>' : '') + '</h2>' +
+        '<div class="i-sheet-when"><span class="b-badge t-' + g.status.key + '">' + esc(g.status.text) + '</span>' + (g.fallback ? '' : '<span class="b-when-date">' + E.fmtShort(g.start) + ' – ' + E.fmtShort(g.end) + '</span>') + '</div></div>' +
+        '<button type="button" class="i-sheet-close" id="tb-sheetClose">關閉</button></div>' +
+      '<div class="i-sheet-quota"><span>' + esc(d.grade || '') + '</span><span class="b-q">' + quotaHtml(d) + '</span></div>' +
+      '<div class="i-sheet-body">' + detailDl(info) + '</div>' +
+      '<div class="i-sheet-act">' + favBtn(d, true) + cmpBtn(d) + (url ? '<a class="g-dl" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">簡章下載</a>' : '') + '</div>' +
+      '</div></div>';
+  }
+  function closeSheet() { ui.sheet = null; renderSheet(); }
 
   // ---------- 並排比較(取自 D 版) ----------
   function pickHtml(d) {
@@ -1038,9 +1074,31 @@ window.TBEngine = (function () {
     }
   }
 
+  // 系組依年級分段(引擎已依年級排好):同校有兩個以上年級時,每個年級加小標題,
+  // 收合時每個年級各露出 ROWS_PER_GRADE 個,各自有置中的「展開」按鈕(使用者 2026-11-17);只有一個年級時露出 ROWS_COLLAPSED 個
+  var ROWS_PER_GRADE = 3;
+  function moreBtn(key, open, left, what) {
+    return '<li class="j-more-li"><button type="button" class="b-more j-more" data-all="' + esc(key) + '" aria-expanded="' + open + '">' +
+      (open ? '收合' + what : '展開其餘 ' + left + ' 個' + what + '系組') + ' <i aria-hidden="true">' + (open ? '▴' : '▾') + '</i></button></li>';
+  }
+  function gradeRows(f) {
+    var order = [], by = {};
+    f.depts.forEach(function (d) { var k = d.grade || ''; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(d); });
+    if (order.length < 2) {
+      var all = !!ui.showAll[f.g.key], ds = f.depts;
+      return (all ? ds : ds.slice(0, ROWS_COLLAPSED)).map(function (d) { return deptHtml(d, false); }).join('') +
+        (ds.length > ROWS_COLLAPSED ? moreBtn(f.g.key, all, ds.length - ROWS_COLLAPSED, '') : '');
+    }
+    return order.map(function (k) {
+      var key = f.g.key + '|' + k, open = !!ui.showAll[key], ds = by[k], name = k || '不分年級';
+      return '<li class="j-grade" aria-hidden="true">' + esc(name) + '<small>' + ds.length + ' 個系組</small></li>' +
+        (open ? ds : ds.slice(0, ROWS_PER_GRADE)).map(function (d) { return deptHtml(d, false); }).join('') +
+        (ds.length > ROWS_PER_GRADE ? moreBtn(key, open, ds.length - ROWS_PER_GRADE, name) : '');
+    }).join('');
+  }
+
   function cardHtml(f) {
-    var g = f.g, url = E.brochureUrl(g), all = !!ui.showAll[g.key];
-    var shown = all ? f.depts : f.depts.slice(0, ROWS_COLLAPSED);
+    var g = f.g, url = E.brochureUrl(g);
     var hidden = g.rows.length - f.rows.length;
     var live = g.status.key === 'open' || g.status.key === 'urgent';
     // 校名前面直疊「公私立 / 地區」兩行小字,高度等於校名;簡章下載放在報名日期後面(使用者 2026-11-09)
@@ -1052,8 +1110,7 @@ window.TBEngine = (function () {
       '<div class="f-when"><span class="b-badge t-' + g.status.key + '">' + esc(g.status.text) + '</span>' + (g.fallback ? '' : '<span class="b-when-date">' + E.fmtShort(g.start) + ' – ' + E.fmtShort(g.end) + '</span>') +
       (url ? '<a class="g-dl" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="下載 ' + esc(g.school) + ' 簡章(另開新視窗)">簡章下載</a>' : '') + (live && !g.fallback ? track(g) : '') + '</div>' +
       '</header>' +
-      '<ul class="b-depts">' + shown.map(function (d) { return deptHtml(d, false); }).join('') + '</ul>' +
-      (f.depts.length > ROWS_COLLAPSED ? '<button type="button" class="b-more" data-all="' + esc(g.key) + '">' + (all ? '收合' : '展開其餘 ' + (f.depts.length - ROWS_COLLAPSED) + ' 個系組') + '</button>' : '') +
+      '<ul class="b-depts">' + gradeRows(f) + '</ul>' +
       (hidden > 0 ? '<p class="b-hidden">此校另有不符合條件的資料 ' + hidden + ' 筆</p>' : '') + '</article>';
   }
 
@@ -1068,9 +1125,11 @@ window.TBEngine = (function () {
       return;
     }
     var from = (ui.page - 1) * size;
-    list.innerHTML = isDept
+    // 表頭只放一次(版面 3 的欄位名稱);手機版隱藏
+    var thead = '<div class="i-thead" aria-hidden="true"><span>系組 / 年級</span><span>考試方式與配分</span><span class="i-th-q">名額</span><span></span></div>';
+    list.innerHTML = thead + (isDept
       ? '<article class="b-card"><ul class="b-depts" style="border-top:0">' + res.depts.slice(from, from + size).map(function (d) { return deptHtml(d, true); }).join('') + '</ul></article>'
-      : res.groups.slice(from, from + size).map(cardHtml).join('');
+      : res.groups.slice(from, from + size).map(cardHtml).join(''));
     var p = ui.page, start = Math.max(1, Math.min(p - 2, pages - 4)), end = Math.min(pages, start + 4), html = '';
     if (pages > 1) {
       var btn = function (n) { return '<button type="button" data-page="' + n + '"' + (n === p ? ' aria-current="page"' : '') + '>' + n + '</button>'; };
@@ -1092,6 +1151,7 @@ window.TBEngine = (function () {
     renderSaves();
     renderList(res);
     renderTray();
+    if (ui.sheet) renderSheet();
     syncFacets();
     E.syncHash();
   }
@@ -1102,17 +1162,12 @@ window.TBEngine = (function () {
 
   // ---------- 事件 ----------
   app.addEventListener('click', function (e) {
-    var t = e.target.closest('button');
+    if (e.target.classList && e.target.classList.contains('i-sheet')) return closeSheet();
+    var t = e.target.closest('button, [data-open]');
     if (!t) return;
     var d = t.dataset, facet = t.closest('[data-facet]'), key = facet ? facet.dataset.facet : '';
-    if (d.ch) { if (d.ch !== st.channel) { ui.open = {}; ui.showAll = {}; ui.fold = {}; E.setChannel(d.ch).then(full); } return; }
-    if (d.fold) {
-      var isOpen = t.getAttribute('aria-expanded') === 'true';
-      ui.fold[d.fold] = isOpen;
-      t.setAttribute('aria-expanded', !isOpen);
-      t.nextElementSibling.hidden = isOpen;
-      return;
-    }
+    if (d.ch) { if (d.ch !== st.channel) { ui.open = {}; ui.showAll = {}; ui.fold = {}; ui.openFacet = null; E.setChannel(d.ch).then(full); } return; }
+    if (d.fold) { ui.openFacet = ui.openFacet === d.fold ? null : d.fold; return syncDropdowns(); }
     if (d.setop) {
       var rule0 = E.fieldRule(key);
       rule0.op = d.setop;
@@ -1145,55 +1200,42 @@ window.TBEngine = (function () {
     }
     if (d.view) { st.view = d.view; return refresh(); }
     if (d.page) { ui.page = +d.page; refresh(true); return el('tb-bar').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    if (d.open) { ui.open[d.open] = !ui.open[d.open]; return refresh(true); }
+    if (d.open) {
+      if (isMobile()) { ui.sheet = d.open; renderSheet(); var c1 = el('tb-sheetClose'); if (c1) c1.focus(); return; }
+      ui.open[d.open] = !ui.open[d.open]; return refresh(true);
+    }
+    if (d.cmpbtn) {
+      if (!ui.pick[d.cmpbtn] && ui.pickOrder.length >= MAX_CMP) return toast('最多比較 ' + MAX_CMP + ' 個系組');
+      setPick(d.cmpbtn, !ui.pick[d.cmpbtn]);
+      return refresh(true);
+    }
+    if (t.id === 'tb-sheetClose') return closeSheet();
+    if (t.id === 'tb-openSide2') { el('tb-side').classList.add('is-open'); return; }
     if (d.all) { ui.showAll[d.all] = !ui.showAll[d.all]; return refresh(true); }
     if (d.fav) { E.toggleFav(d.fav.split(',')); return refresh(true); }
     if (d.share) {
+      if (!E.favCount()) return toast('先按系組旁的 ☆ 收藏,再分享');
       var done = E.shareFav(d.share);
       if (done && done.then && d.share === 'copy') done.then(function (ok) { toast(ok ? '已複製收藏連結' : '瀏覽器不允許複製'); });
       return;
     }
-    if (d.load !== undefined) {
-      E.restore(E.savedAll()[+d.load].state);
-      el('tb-q').value = st.q;
-      return E.setYear(st.year).then(full);
-    }
-    if (d.unsave !== undefined) { E.removeSaved(+d.unsave); return renderSaves(); }
-    if (t.id === 'tb-moreBtn') { ui.more = !ui.more; el('tb-more').hidden = !ui.more; t.setAttribute('aria-expanded', ui.more); return; }
     if (t.id === 'tb-cmpOpen') { ui.cmpOpen = true; renderTray(); var c0 = el('tb-cmpClose'); if (c0) c0.focus(); return; }
     if (t.id === 'tb-cmpClose') { ui.cmpOpen = false; return renderTray(); }
     if (t.id === 'tb-cmpClear') { ui.pick = {}; ui.pickOrder = []; ui.cmpOpen = false; return refresh(true); }
     if (d.uncmp) { setPick(d.uncmp, false); return refresh(true); }
-    if (t.id === 'tb-pickToggle') { ui.picker = !ui.picker; renderPicker(); return; }
     if (t.id === 'tb-openSide') { el('tb-side').classList.add('is-open'); return; }
     if (t.id === 'tb-closeSide') { el('tb-side').classList.remove('is-open'); return; }
     if (t.id === 'tb-favOnly') { st.favOnly = !st.favOnly; return refresh(); }
     if (t.id === 'tb-clear') { E.clearAll(); el('tb-q').value = ''; renderFacets(); return refresh(); }
-    if (t.id === 'tb-link') { E.syncHash(); return E.copy(window.location.href).then(function (ok) { toast(ok ? '已複製這組條件的連結' : '瀏覽器不允許複製'); }); }
-    if (t.id === 'tb-save') {
-      if (!E.activeRules().length && !st.q.trim()) return toast('先設定條件才能儲存');
-      var name = window.prompt('幫這組條件取個名字', E.activeRules().slice(0, 2).map(E.ruleText).join('、'));
-      if (name) { E.saveSet(name); renderSaves(); toast('已儲存'); }
-    }
   });
 
   app.addEventListener('change', function (e) {
     var t = e.target, facet = t.closest('[data-facet]');
-    if (t.dataset.cmp) { setPick(t.dataset.cmp, t.checked); return refresh(true); }
     if (t.dataset.val !== undefined) {
       E.toggleValue(facet.dataset.facet, t.dataset.val);
       return refresh();
     }
-    if (t.dataset.pick) {
-      var cur = E.shownFields();
-      if (t.checked) cur.push(t.dataset.pick); else cur = cur.filter(function (k) { return k !== t.dataset.pick; });
-      E.setShownFields(cur);
-      return renderFacets();
-    }
     if (t.id === 'tb-sort') { st.sort = t.value; return refresh(); }
-    if (t.id === 'tb-hideClosed') { st.hideClosed = t.checked; return refresh(); }
-    if (t.id === 'tb-fuzzy') { st.fuzzy = t.checked; return refresh(); }
-    if (t.id === 'tb-year') { return E.setYear(t.value === 'auto' ? 'auto' : Number(t.value)).then(full); }
   });
 
   app.addEventListener('input', function (e) {
@@ -1218,7 +1260,29 @@ window.TBEngine = (function () {
     }
   });
 
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ui.cmpOpen) { ui.cmpOpen = false; renderTray(); } });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && ui.sheet) return closeSheet();
+    if (e.key === 'Escape' && ui.cmpOpen) { ui.cmpOpen = false; renderTray(); }
+  });
+  // 篩選下拉:一次只開一個;點外面或按 Esc 收起
+  function syncDropdowns() {
+    app.querySelectorAll('[data-fold]').forEach(function (b) {
+      var on = b.dataset.fold === ui.openFacet;
+      b.setAttribute('aria-expanded', on);
+      b.nextElementSibling.hidden = !on;
+    });
+  }
+  document.addEventListener('click', function (e) {
+    if (ui.openFacet && !(e.target.closest && e.target.closest('.b-facet'))) { ui.openFacet = null; syncDropdowns(); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && ui.openFacet) { var k = ui.openFacet; ui.openFacet = null; syncDropdowns(); var h = app.querySelector('[data-fold="' + k + '"]'); if (h) h.focus(); }
+  });
+  // 整列可點的系組:鍵盤 Enter / 空白鍵也能展開
+  app.addEventListener('keydown', function (e) {
+    var row = e.target.closest && e.target.closest('[data-open]');
+    if (row && row === e.target && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
+  });
   app.addEventListener('click', function (e) { if (ui.cmpOpen && e.target.classList && e.target.classList.contains('f-cmp')) { ui.cmpOpen = false; renderTray(); } });
 
   E.init(window.TB_SITE_BASE).then(function () {
