@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-17T05:51:26.073Z
+ * 產生時間:2026-11-17T17:57:10.569Z
  */
 (function () {
   'use strict';
@@ -237,15 +237,20 @@ window.TBEngine = (function () {
 
   function buildGroups(list) {
     var map = {}, out = [];
+    // D189:同校的聯招列(台聯大)和學校自己招生的列放在同一張卡;聯招標籤改標在系名後面(使用者 2026-11-18)
     list.forEach(function (r) {
-      var k = r.channel + '|' + r.school + (r.joint ? '|' + r.joint : '');
-      if (!map[k]) { map[k] = { key: k, channel: r.channel, school: r.school, joint: r.joint, jointName: r.jointName, type: r.type, kind: r.kind, region: r.region, url: r.url, year: r.year, rows: [] }; out.push(map[k]); }
+      var k = r.channel + '|' + r.school;
+      if (!map[k]) { map[k] = { key: k, channel: r.channel, school: r.school, joint: '', jointName: '', type: r.type, kind: r.kind, region: r.region, url: r.url, year: r.year, rows: [] }; out.push(map[k]); }
       map[k].rows.push(r);
       r.g = map[k];
     });
     out.forEach(function (g) {
+      // 卡片的報名日期與簡章:以學校自己招生的列為準,全部都是聯招列時才用聯招的
+      var own = g.rows.filter(function (r) { return !r.joint; });
+      var basis = own.length ? own : g.rows;
       var cnt = {}, best = null;
-      g.rows.forEach(function (r) { var k = r.start + '-' + r.end; cnt[k] = (cnt[k] || 0) + 1; if (!best || cnt[k] > cnt[best]) best = k; });
+      basis.forEach(function (r) { var k = r.start + '-' + r.end; cnt[k] = (cnt[k] || 0) + 1; if (!best || cnt[k] > cnt[best]) best = k; });
+      g.url = basis[0].url;
       g.start = best.split('-')[0]; g.end = best.split('-')[1];
       g.fallback = st.year === 'auto' && latestYear && g.year < latestYear;
       g.status = g.fallback ? { key: 'old', text: g.year + ' 學年度資料', left: null } : status(g.start, g.end);
@@ -355,8 +360,8 @@ window.TBEngine = (function () {
   function deptGroups(list) {
     var map = {}, out = [];
     list.forEach(function (r) {
-      var k = r.department + '|' + r.grade + '|' + (r.group || '');
-      if (!map[k]) { map[k] = { key: r.id, dept: r.department, grade: r.grade, group: r.group || '', rows: [], g: r.g }; out.push(map[k]); }
+      var k = r.department + '|' + r.grade + '|' + (r.group || '') + '|' + r.joint;
+      if (!map[k]) { map[k] = { key: r.id, dept: r.department, grade: r.grade, group: r.group || '', joint: r.joint, jointName: r.jointName, start: r.start, end: r.end, url: r.url, rows: [], g: r.g }; out.push(map[k]); }
       map[k].rows.push(r);
     });
     // 同一學校的系組依年級排(二年級全部在前、再三年級……,使用者 2026-11-17:不要二三年級交叉);同年級維持簡章順序
@@ -407,7 +412,7 @@ window.TBEngine = (function () {
     var base = baseFilter(), seen = {}, n = 0;
     rows.forEach(function (r) {
       if (!base(r) || !ruleMatches(rule, r)) return;
-      var k = r.g.key + '|' + r.department + '|' + r.grade + '|' + (r.group || '');
+      var k = r.g.key + '|' + r.department + '|' + r.grade + '|' + (r.group || '') + '|' + r.joint;
       if (!seen[k]) { seen[k] = 1; n++; }
     });
     return n;
@@ -422,7 +427,7 @@ window.TBEngine = (function () {
       var vals = f.get(r);
       // 「符合任一」時選項本身就能讓這列出現,不必再過其他條件
       if (st.logic !== 'any' && !rulesPass(others, r, true)) return;
-      var k =r.g.key + '|' + r.department + '|' + r.grade + '|' + (r.group || '');
+      var k = r.g.key + '|' + r.department + '|' + r.grade + '|' + (r.group || '') + '|' + r.joint;
       // 「只考勾選的項目」:每個選項的數字 = 加上這一項後會列出、而且有考這一項的系組
       if (f.onlyIn) {
         var cur = (fieldRule(field) || {}).v || [];
@@ -1009,13 +1014,16 @@ window.TBEngine = (function () {
     var g = d.g;
     var info = E.detail(d, { quota: true, summaryMax: 70 }), open = !!ui.open[d.key] && info.length > 0;
     var exam = E.summaryLine(d, 80).text;
-    var sub = [d.grade].filter(Boolean).map(esc).join(' · ') + (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '');
+    // D189:聯招(台聯大)標在系名後面;報名日期和學校卡片不同時,列在年級後面
+    var jointWhen = d.joint && !g.fallback && (d.start !== g.start || d.end !== g.end) ? '聯招報名 ' + E.fmtShort(d.start) + ' – ' + E.fmtShort(d.end) : '';
+    var sub = [d.grade, jointWhen].filter(Boolean).map(esc).join(' · ') + (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '');
     // 整列可點:電腦原地展開資格與備註,手機從底部滑出詳情;比較、收藏按鈕在最右欄
     return '<li class="b-dept i-row' + (ui.pick[d.key] ? ' is-picked' : '') + (open ? ' is-open' : '') + '">' +
       '<div class="i-grid"' + (info.length ? ' data-open="' + esc(d.key) + '" role="button" tabindex="0" aria-expanded="' + open + '"' : '') + '>' +
         '<div class="i-c-dept">' +
           (showSchool ? '<span class="b-dept-school">' + E.highlight(g.school) + (g.joint ? ' · ' + esc(g.joint) : '') + ' · ' + esc(g.status.text) + '</span>' : '') +
-          '<span class="b-dept-name">' + E.highlight(d.dept) + (d.group ? ' <span class="g-group">' + E.highlight(d.group) + '</span>' : '') + '</span>' +
+          '<span class="b-dept-name">' + E.highlight(d.dept) + (d.group ? ' <span class="g-group">' + E.highlight(d.group) + '</span>' : '') +
+            (d.joint ? '<span class="b-joint" title="' + esc(d.jointName || d.joint) + '">' + esc(d.joint) + '</span>' : '') + '</span>' +
           (sub ? '<span class="i-sub">' + sub + '</span>' : '') + '</div>' +
         // 不放「筆試/書審」等考試方式標籤(使用者 2026-11-17:多餘,且關鍵字判斷會誤標,例如「選項1…」被標成書審);配分摘要已寫明
         '<div class="i-c-exam">' +
