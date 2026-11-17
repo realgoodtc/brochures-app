@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-17T05:17:17.755Z
+ * 產生時間:2026-11-17T05:32:55.336Z
  */
 (function () {
   'use strict';
@@ -47,7 +47,12 @@ window.TBEngine = (function () {
   var ORAL = /面試|口試|口頭/;
   var PRACTICAL = /術科|演出|演奏|演唱|主修|展演|實作|刀工|繪畫|素描|創意設計|音樂性|技巧性/;
   var SUBJECT = /資料結構|資料庫|資料科學|機器學習|深度學習/;
-  var DOCS = /審|書面|資料|成績|自傳|讀書計畫|履歷|簡歷|作品|動機|表現|證明|證照|研究計畫|推薦|報告|學習|修業|其他|經歷|經驗|成就|資歷|年資|選項|選考|潛力|能力|知能|規劃|展望|特質|儀態|理由|表達|自我介紹|理解|複試|初試|初審|滿分/;
+  // 2026-11-17:拿掉「選項、選考」——「選項1」是任選組別的標題(底下才是科目),「筆試選考科目(二科選考一科)」是筆試,都不是書審
+  var DOCS = /審|書面|資料|成績|自傳|讀書計畫|履歷|簡歷|作品|動機|表現|證明|證照|研究計畫|推薦|報告|學習|修業|其他|經歷|經驗|成就|資歷|年資|潛力|能力|知能|規劃|展望|特質|儀態|理由|表達|自我介紹|理解|複試|初試|初審|滿分/;
+  // 名稱寫明「筆試」的一律算筆試(「筆試選考科目…」「筆試成績」)
+  var WRITTEN = /筆試/;
+  // 只是組別標題、本身不是考試項目的名稱(「選項1」「選考」「選項二」)
+  var GROUP_LABEL = /^(選項|選考|組合|方案)\s*[\d一二三四五六七八九十]*$/;
 
   // type:multi 複選、num 數字、text 文字、date 日期區間
   // ops 第一個是預設;multiValued = 一列可能有多個值,才有「同時符合」
@@ -169,22 +174,33 @@ window.TBEngine = (function () {
     };
     var isOral = function (n) { return ORAL.test(n); };
     var isPractical = function (n) { return PRACTICAL.test(n); };
-    var isDocs = function (n) { return !isOral(n) && !isPractical(n) && !SUBJECT.test(n) && DOCS.test(n); };
-    // 這個系組的考試由哪幾類組成:筆試、書審、面試、術科
+    var isDocs = function (n) { return !isOral(n) && !isPractical(n) && !WRITTEN.test(n) && !SUBJECT.test(n) && DOCS.test(n); };
+    // 這個系組的考試由哪幾類組成:筆試、書審、面試、術科。
+    // 子項目跟著上層歸類(「面試」底下的「表達內容、儀態」算面試);上層只是組別標題(「選項1」底下是有機化學…)時看子項目本身,標題不算
+    var parents = {};
+    all.forEach(function (x) { if (x[6]) parents[x[6]] = 1; });
+    var isLabel = function (n) { return GROUP_LABEL.test(String(n || '').trim()); };
+    // 一個名稱可以同時屬於兩類(「主修樂器及面試」= 術科 + 面試、「審查、筆試 工程數學」= 書審 + 筆試);都不像就是筆試科目
+    var own = function (n) {
+      var c = [];
+      if (isOral(n)) c.push('面試');
+      if (isPractical(n)) c.push('術科');
+      if (WRITTEN.test(n)) { c.push('筆試'); if (/審/.test(n)) c.push('書審'); }
+      if (isDocs(n)) c.push('書審');
+      return c.length ? c : ['筆試'];
+    };
     var modes = [];
-    if (all.length) {
-      var written = all.some(function (x) { return !isOral(x[1]) && !isPractical(x[1]) && !isDocs(x[1]); });
-      if (written) modes.push('筆試');
-      if (all.some(function (x) { return isDocs(x[1]); })) modes.push('書審');
-      if (all.some(function (x) { return isOral(x[1]); })) modes.push('面試');
-      if (all.some(function (x) { return isPractical(x[1]); })) modes.push('術科');
-    }
+    all.forEach(function (x) {
+      if (!String(x[1] || '').trim() || (parents[x[1]] && isLabel(x[1]))) return;
+      (x[6] && !isLabel(x[6]) ? own(x[6]) : own(x[1])).forEach(function (m) { if (modes.indexOf(m) < 0) modes.push(m); });
+    });
+    modes = ['筆試', '書審', '面試', '術科'].filter(function (m) { return modes.indexOf(m) >= 0; });
     var st0 = status(r.start, r.end);
     var stat = st0.key === 'open' ? ['報名中'] : st0.key === 'urgent' ? ['報名中', '3 天內截止'] : st0.key === 'soon' ? ['尚未開始'] : st0.key === 'closed' ? ['已截止'] : ['日期未定'];
     // 搜尋考科用:考試項目是簡章原名,加上統稱,「書審」才找得到「書面資料」「歷年成績單」
     var aliases = [];
-    if (all.some(function (x) { return isDocs(x[1]); })) aliases.push('書審');
-    if (all.some(function (x) { return isOral(x[1]); })) aliases.push('面試', '口試');
+    if (modes.indexOf('書審') >= 0) aliases.push('書審');
+    if (modes.indexOf('面試') >= 0) aliases.push('面試', '口試');
     if (modes.indexOf('筆試') >= 0) aliases.push('筆試');
     if (modes.indexOf('術科') >= 0) aliases.push('術科');
     var names = all.length ? all.map(function (x) { return x[1]; }).join(' ') : (r.stage1 || '') + ' ' + (r.stage2 || '');
@@ -961,11 +977,6 @@ window.TBEngine = (function () {
   }
 
   // ---------- 比較表格的一列(版面 3) ----------
-  function modesOf(d) {
-    var out = [];
-    d.rows.forEach(function (r) { r.x.modes.forEach(function (m) { if (out.indexOf(m) < 0) out.push(m); }); });
-    return E.FIELDS.examMode.options.filter(function (m) { return out.indexOf(m) >= 0; });
-  }
   function quotaHtml(d) {
     var parts = E.quotaParts(d), main = parts.filter(function (p) { return p.main; }), extra = parts.filter(function (p) { return !p.main; });
     return (main.length ? '<b>' + esc(main.map(function (p) { return p.quota; }).join('+')) + '</b><small> 名</small>' : '<small>–</small>') +
@@ -986,7 +997,7 @@ window.TBEngine = (function () {
   function deptHtml(d, showSchool) {
     var g = d.g;
     var info = E.detail(d, { quota: true, summaryMax: 70 }), open = !!ui.open[d.key] && info.length > 0;
-    var exam = E.summaryLine(d, 80).text, modes = modesOf(d);
+    var exam = E.summaryLine(d, 80).text;
     var sub = [d.grade].filter(Boolean).map(esc).join(' · ') + (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '');
     // 整列可點:電腦原地展開資格與備註,手機從底部滑出詳情;比較、收藏按鈕在最右欄
     return '<li class="b-dept i-row' + (ui.pick[d.key] ? ' is-picked' : '') + (open ? ' is-open' : '') + '">' +
@@ -995,7 +1006,8 @@ window.TBEngine = (function () {
           (showSchool ? '<span class="b-dept-school">' + E.highlight(g.school) + (g.joint ? ' · ' + esc(g.joint) : '') + ' · ' + esc(g.status.text) + '</span>' : '') +
           '<span class="b-dept-name">' + E.highlight(d.dept) + (d.group ? ' <span class="g-group">' + E.highlight(d.group) + '</span>' : '') + '</span>' +
           (sub ? '<span class="i-sub">' + sub + '</span>' : '') + '</div>' +
-        '<div class="i-c-exam">' + (modes.length ? '<span class="i-modes">' + modes.map(function (m) { return '<span class="i-mode">' + esc(m) + '</span>'; }).join('') + '</span>' : '') +
+        // 不放「筆試/書審」等考試方式標籤(使用者 2026-11-17:多餘,且關鍵字判斷會誤標,例如「選項1…」被標成書審);配分摘要已寫明
+        '<div class="i-c-exam">' +
           (exam ? '<span class="i-exam">' + E.highlight(exam) + '</span>' : '') + '</div>' +
         '<div class="i-c-quota b-q">' + quotaHtml(d) + '</div>' +
         '<div class="i-c-act">' + cmpBtn(d) + favBtn(d) + '</div>' +
