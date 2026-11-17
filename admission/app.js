@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-17T05:32:55.336Z
+ * 產生時間:2026-11-17T05:51:26.073Z
  */
 (function () {
   'use strict';
@@ -505,14 +505,15 @@ window.TBEngine = (function () {
    *   沒有整組名稱的筆試科目收成「筆試:國文、英文、微積分」(有配分時「筆試 100%:國文 50%、英文 50%」)。
    *   只有一個階段時不寫階段。
    */
-  function examsText(exams) {
+  // topOnly:只列第一層(列表摘要用,子項配分放到「考試說明」,使用者 2026-11-17)
+  function examsText(exams, topOnly) {
     if (!exams || !exams.length) return '';
     var w = function (x) { return x[2] === null || x[2] === undefined ? '' : (x[3] === '%' ? ' ' + x[2] + '%' : (x[3] === '倍' ? ' ×' + x[2] : ' ' + x[2])); };
     var dt = function (x) { return x[4] && String(x[4]).length === 8 ? '(' + Number(String(x[4]).slice(4, 6)) + '/' + Number(String(x[4]).slice(6)) + ')' : ''; };
     var stages = [1, 2].map(function (s) { return exams.filter(function (x) { return x[0] === s; }); }).filter(function (a) { return a.length; });
     var partsText = function (list, all) {
       var parts = [], g = {}, written = null;
-      var kidsOf = function (x) { return all ? all.filter(function (k) { return k[6] && k[6] === x[1]; }) : []; };
+      var kidsOf = function (x) { return all && !topOnly ? all.filter(function (k) { return k[6] && k[6] === x[1]; }) : []; };
       // 這個階段第一層全部都是筆試科目(沒有書審、面試混在一起)才收成「筆試：…」,混在一起時分不清哪些是筆試
       var plain = list.filter(function (x) { return !x[5]; });
       var allWritten = !!all && plain.length > 0 && plain.every(function (x) { return isWrittenSubject(x[1]) && !kidsOf(x).length; });
@@ -554,7 +555,8 @@ window.TBEngine = (function () {
   function stageText(r) {
     return [r.stage1, r.stage2 ? (/^複試/.test(r.stage2) ? '' : '複試:') + r.stage2 : ''].filter(Boolean).join(' / ');
   }
-  function summary(d) { var r = d.rows[0]; return examsText(r.exams) || stageText(r); }
+  // 列表摘要只放第一層(「書面資料審查 100%」),子項配分在展開的「考試說明」
+  function summary(d) { var r = d.rows[0]; return examsText(r.exams, true) || stageText(r); }
 
   /** 系組的主要名額與外加身分。 */
   function quotaParts(d) {
@@ -573,7 +575,15 @@ window.TBEngine = (function () {
    */
   function detail(d, shown) {
     shown = shown || {};
-    var r = d.rows[0], exams = examsText(r.exams), out = [];
+    var r = d.rows[0], exams = examsText(r.exams, true), full = examsText(r.exams), out = [];
+    // 子項配分(列表只顯示第一層);原文已逐項寫到子項名稱時只放原文,避免同一段內容出現兩次
+    var kidNames = (r.exams || []).filter(function (x) { return x[6]; }).map(function (x) { return String(x[1]).replace(/[(（].*$/, '').slice(0, 6); });
+    var kidsInStage = kidNames.length && r.stage1 && kidNames.every(function (n) { return String(r.stage1).indexOf(n) >= 0; });
+    // 只列有子項的項目(「面試 60%(專業知識 50%、表達能力 50%)」),沒有子項的第一層列表上已經有
+    var withKids = (r.exams || []).filter(function (x) {
+      return x[6] || (r.exams || []).some(function (k) { return k[6] && k[6] === x[1] && k[0] === x[0]; });
+    });
+    var kidsLine = full !== exams && !kidsInStage ? examsText(withKids).replace(/／/g, '\n') : '';
     var sumFull = !!shown.summaryMax && summaryLine(d, shown.summaryMax).full;
     var dates = (r.dates || []).filter(function (x) { return x[0] && String(x[1]).length === 8; });
     if (r.years !== null && r.years !== undefined) out.push(['工作年資', r.years + ' 年以上']);
@@ -582,7 +592,8 @@ window.TBEngine = (function () {
     if (d.rows.length > 1 && !shown.quota) out.push(['名額', d.rows.map(function (x) { return x.identity + ' ' + x.quota + ' 名'; }).join('、')]);
     if (exams && !sumFull) out.push(['配分', exams.replace(/／/g, '\n')]);
     // 沒有結構化配分時,列上摘要就是考試原文
-    if (r.stage1 && !(sumFull && !exams)) out.push([exams ? '考試說明' : '初試', r.stage1]);
+    var stage1 = r.stage1 && !(sumFull && !exams) ? r.stage1 : '';
+    if (kidsLine || stage1) out.push([exams ? '考試說明' : '初試', [kidsLine, stage1].filter(Boolean).join('\n')]);
     if (r.stage2 && !(sumFull && !exams)) out.push(['複試', r.stage2]);
     if (dates.length) out.push(['重要日期', dates.map(function (x) { return x[0] + ' ' + fmt(String(x[1])); }).join('\n')]);
     if (d.remarks.length) out.push(['備註', d.remarks.join('\n')]);
