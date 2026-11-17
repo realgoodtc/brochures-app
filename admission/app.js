@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-17T04:51:00.069Z
+ * 產生時間:2026-11-17T05:17:17.755Z
  */
 (function () {
   'use strict';
@@ -799,15 +799,14 @@ window.TBEngine = (function () {
         '<div class="j-toolbar"><div class="b-search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>' +
           '<label class="sr" for="tb-q">搜尋校名、系名或考科</label><input type="search" id="tb-q" placeholder="搜尋校名、系名或考科(例如:清大、資工、書審)" autocomplete="off"></div>' +
           '<div class="j-status" id="tb-ribbon" role="group" aria-label="依報名狀態篩選"></div>' +
-          '<div class="j-sort" id="tb-bar"></div>' +
           '<button type="button" class="f-favlink" id="tb-favOnly" aria-pressed="false">★ 收藏 <span id="tb-favN">0</span></button>' +
           '<a class="b-consult" href="' + esc(E.CONSULT_URL) + '" target="_blank" rel="noopener noreferrer">立即洽詢書審口試</a></div>' +
         '<div class="j-filters" id="tb-side" aria-label="篩選條件"><div class="j-filters-head"><b>篩選</b><div class="b-logic" role="group" aria-label="條件之間的關係" id="tb-logic"></div></div>' +
           '<div id="tb-picker"></div><div class="j-facets" id="tb-facets"></div>' +
           '<div class="b-side-foot"><button type="button" id="tb-closeSide"></button></div></div>' +
       '</header>' +
-      // 依學校 / 依校系、已套用的條件、分享收藏
-      '<div class="j-subbar"><div class="h-seg" id="tb-viewSeg" role="group" aria-label="顯示方式"></div><div class="b-applied" id="tb-applied" hidden></div><div class="h-favshare" id="tb-favShare"></div></div>' +
+      // 依學校 / 依校系、已套用的條件、分享收藏、排序(使用者 2026-11-17:排序從控制卡移到這一行右邊)
+      '<div class="j-subbar"><div class="h-seg" id="tb-viewSeg" role="group" aria-label="顯示方式"></div><div class="b-applied" id="tb-applied" hidden></div><div class="h-favshare" id="tb-favShare"></div><div class="j-sort" id="tb-bar"></div></div>' +
       '<main class="j-matrix" aria-label="招生系組"><div id="tb-list"></div></main>' +
       '<nav class="b-pager" id="tb-pager" aria-label="分頁"></nav>' +
       '<p class="b-note">提醒:' + esc(E.NOTE) + '</p>' +
