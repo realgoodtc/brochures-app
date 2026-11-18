@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-17T17:57:10.569Z
+ * 產生時間:2026-11-18T08:13:23.392Z
  */
 (function () {
   'use strict';
@@ -53,6 +53,16 @@ window.TBEngine = (function () {
   var WRITTEN = /筆試/;
   // 只是組別標題、本身不是考試項目的名稱(「選項1」「選考」「選項二」)
   var GROUP_LABEL = /^(選項|選考|組合|方案)\s*[\d一二三四五六七八九十]*$/;
+  var CAT_ORDER = ['筆試', '書審', '面試', '術科'];
+  // 舊資料(沒有類別欄)依名稱判斷:一個名稱可以同時屬於兩類;都不像就是筆試科目
+  function guessCats(n) {
+    var c = [];
+    if (ORAL.test(n)) c.push('面試');
+    if (PRACTICAL.test(n)) c.push('術科');
+    if (WRITTEN.test(n)) { c.push('筆試'); if (/審/.test(n)) c.push('書審'); }
+    if (!ORAL.test(n) && !PRACTICAL.test(n) && !WRITTEN.test(n) && !SUBJECT.test(n) && DOCS.test(n)) c.push('書審');
+    return c.length ? c : ['筆試'];
+  }
 
   // type:multi 複選、num 數字、text 文字、date 日期區間
   // ops 第一個是預設;multiValued = 一列可能有多個值,才有「同時符合」
@@ -180,19 +190,12 @@ window.TBEngine = (function () {
     var parents = {};
     all.forEach(function (x) { if (x[6]) parents[x[6]] = 1; });
     var isLabel = function (n) { return GROUP_LABEL.test(String(n || '').trim()); };
-    // 一個名稱可以同時屬於兩類(「主修樂器及面試」= 術科 + 面試、「審查、筆試 工程數學」= 書審 + 筆試);都不像就是筆試科目
-    var own = function (n) {
-      var c = [];
-      if (isOral(n)) c.push('面試');
-      if (isPractical(n)) c.push('術科');
-      if (WRITTEN.test(n)) { c.push('筆試'); if (/審/.test(n)) c.push('書審'); }
-      if (isDocs(n)) c.push('書審');
-      return c.length ? c : ['筆試'];
-    };
+    // D195:有類別欄(第 8 欄)就照類別;舊資料依名稱判斷(guessCats)
     var modes = [];
     all.forEach(function (x) {
       if (!String(x[1] || '').trim() || (parents[x[1]] && isLabel(x[1]))) return;
-      (x[6] && !isLabel(x[6]) ? own(x[6]) : own(x[1])).forEach(function (m) { if (modes.indexOf(m) < 0) modes.push(m); });
+      var cats = x[7] ? String(x[7]).split('+') : (x[6] && !isLabel(x[6]) ? guessCats(x[6]) : guessCats(x[1]));
+      cats.forEach(function (m) { if (modes.indexOf(m) < 0) modes.push(m); });
     });
     modes = ['筆試', '書審', '面試', '術科'].filter(function (m) { return modes.indexOf(m) >= 0; });
     var st0 = status(r.start, r.end);
@@ -548,7 +551,21 @@ window.TBEngine = (function () {
             subs.map(function (x) { return x[1] + w(x) + (oneDate ? '' : dt(x)); }).join('、');
         }
         // 整組任選(台聯大「選項1:有機化學、無機化學… 選項2:…」):每個選項後面列出組內科目,和 Exams.format 一致(D116)
-        if (Array.isArray(p[0])) return p.map(function (x) { return x[1] + kidsText(x); }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
+        // D190:選項名稱只是「選項1」這類標籤時,列表摘要也直接列組內科目與倍數(「有機化學 ×1、無機化學 ×0.1 或 物理化學 ×0.1…(任選一)」),
+        // 不再只顯示「選項1或選項2」(使用者 2026-11-18)
+        if (Array.isArray(p[0])) {
+          var labelKids = function (x) { return all && GROUP_LABEL.test(String(x[1] || '').trim()) ? all.filter(function (k) { return k[6] && k[6] === x[1] && k[0] === x[0]; }) : []; };
+          // 只有一個選項、組內多科:「(電子學 ×1、訊號與系統 ×1、控制系統 ×1 任選一)」,和前面的必考科目分得開
+          if (p.length === 1 && labelKids(p[0]).length > 1) return '(' + partsText(labelKids(p[0])).replace(/^筆試[^：]*：/, '') + ' 任選一)' + w(p[0]) + dt(p[0]);
+          if (p.every(function (x) { return labelKids(x).length; })) {
+            // 有兩個以上選項時,含多科的選項加括號,看得出哪幾科是同一組:「(有機化學 ×1、無機化學 ×0.1)或 生物化學 ×1.1(任選一組)」
+            return p.map(function (x) {
+              var t = partsText(labelKids(x)).replace(/^筆試[^：]*：/, '');
+              return p.length > 1 && labelKids(x).length > 1 ? '(' + t + ')' : t;
+            }).join('或') + (p.length > 1 ? '(任選一組)' : '(任選一)') + w(p[0]) + dt(p[0]);
+          }
+          return p.map(function (x) { return x[1] + kidsText(x); }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
+        }
         return p[1] + w(p) + dt(p) + kidsText(p);
       }).join('、');
     };
@@ -560,8 +577,47 @@ window.TBEngine = (function () {
   function stageText(r) {
     return [r.stage1, r.stage2 ? (/^複試/.test(r.stage2) ? '' : '複試:') + r.stage2 : ''].filter(Boolean).join(' / ');
   }
-  // 列表摘要只放第一層(「書面資料審查 100%」),子項配分在展開的「考試說明」
-  function summary(d) { var r = d.rows[0]; return examsText(r.exams, true) || stageText(r); }
+  /**
+   * D195:列表摘要只顯示考試類別(筆試、書審、面試、術科)與各類合計配分(「書審 40%、面試 60%」);
+   * 兩個階段時分開寫。類別取資料的第 8 欄,舊資料沒有時依名稱關鍵字判斷。原本的項目、子項與各自配分放在展開的「考試說明」。
+   */
+  function catsOf(x) { return x[7] ? String(x[7]).split('+') : guessCats(x[1]); }
+  function categorySummary(exams) {
+    if (!exams || !exams.length) return '';
+    var stages = [1, 2].map(function (s) { return exams.filter(function (x) { return x[0] === s && !x[6]; }); })
+      .filter(function (a) { return a.length; });
+    var parts = stages.map(function (list) {
+      // 任選組算一次:類別取組內的聯集、配分取第一個
+      var entries = [], seen = {};
+      list.forEach(function (x) {
+        if (x[5]) {
+          if (seen[x[5]]) { seen[x[5]].cats = seen[x[5]].cats.concat(kidCats(x, exams)); return; }
+          seen[x[5]] = { cats: kidCats(x, exams), w: x[2], u: x[3] };
+          entries.push(seen[x[5]]);
+          return;
+        }
+        entries.push({ cats: kidCats(x, exams), w: x[2], u: x[3] });
+      });
+      var order = [], sums = {};
+      // 類別固定照「筆試、書審、面試、術科」排,各系看起來一致
+      entries.sort(function (a, b) { return catRank(a.cats) - catRank(b.cats); });
+      entries.forEach(function (e) {
+        var k = CAT_ORDER.filter(function (c) { return e.cats.indexOf(c) >= 0; }).join('+') || '筆試';
+        if (!sums[k]) { sums[k] = { w: 0, ok: true }; order.push(k); }
+        if (e.u === '%' && typeof e.w === 'number') sums[k].w += e.w; else sums[k].ok = false;
+      });
+      return order.map(function (k) { return k + (sums[k].ok && sums[k].w ? ' ' + Math.round(sums[k].w * 100) / 100 + '%' : ''); }).join('、');
+    });
+    return parts.length > 1 ? '第一階段 ' + parts[0] + '／第二階段 ' + parts[1] : parts[0];
+  }
+  function catRank(cats) { var i = CAT_ORDER.map(function (c) { return cats.indexOf(c) >= 0; }).indexOf(true); return i < 0 ? 0 : i; }
+  // 任選組的選項是「選項1」這類標籤時,類別看組內科目
+  function kidCats(x, exams) {
+    if (!GROUP_LABEL.test(String(x[1] || '').trim())) return catsOf(x);
+    var kids = exams.filter(function (k) { return k[6] === x[1] && k[0] === x[0]; });
+    return kids.length ? [].concat.apply([], kids.map(catsOf)) : catsOf(x);
+  }
+  function summary(d) { var r = d.rows[0]; return categorySummary(r.exams) || stageText(r); }
 
   /** 系組的主要名額與外加身分。 */
   function quotaParts(d) {
@@ -580,30 +636,32 @@ window.TBEngine = (function () {
    */
   function detail(d, shown) {
     shown = shown || {};
-    var r = d.rows[0], exams = examsText(r.exams, true), full = examsText(r.exams), out = [];
-    // 子項配分(列表只顯示第一層);原文已逐項寫到子項名稱時只放原文,避免同一段內容出現兩次
-    var kidNames = (r.exams || []).filter(function (x) { return x[6]; }).map(function (x) { return String(x[1]).replace(/[(（].*$/, '').slice(0, 6); });
-    var kidsInStage = kidNames.length && r.stage1 && kidNames.every(function (n) { return String(r.stage1).indexOf(n) >= 0; });
-    // 只列有子項的項目(「面試 60%(專業知識 50%、表達能力 50%)」),沒有子項的第一層列表上已經有
-    var withKids = (r.exams || []).filter(function (x) {
-      return x[6] || (r.exams || []).some(function (k) { return k[6] && k[6] === x[1] && k[0] === x[0]; });
-    });
-    var kidsLine = full !== exams && !kidsInStage ? examsText(withKids).replace(/／/g, '\n') : '';
+    // D195:列表只顯示類別合計;考試說明列出原本的項目、子項與各自配分(和類別摘要一樣時不重複)
+    var r = d.rows[0], exams = categorySummary(r.exams), full = examsText(r.exams), out = [];
+    var kidsLine = full && full !== exams ? full.replace(/／/g, '\n') : '';
     var sumFull = !!shown.summaryMax && summaryLine(d, shown.summaryMax).full;
     var dates = (r.dates || []).filter(function (x) { return x[0] && String(x[1]).length === 8; });
     if (r.years !== null && r.years !== undefined) out.push(['工作年資', r.years + ' 年以上']);
     if (r.time) out.push(['上課時段', r.time]);
     if (r.elig) out.push(['報考資格', r.elig]);
     if (d.rows.length > 1 && !shown.quota) out.push(['名額', d.rows.map(function (x) { return x.identity + ' ' + x.quota + ' 名'; }).join('、')]);
-    if (exams && !sumFull) out.push(['配分', exams.replace(/／/g, '\n')]);
+    if (exams && !sumFull) out.push(['考試方式', exams.replace(/／/g, '\n')]);
     // 沒有結構化配分時,列上摘要就是考試原文
     var stage1 = r.stage1 && !(sumFull && !exams) ? r.stage1 : '';
     if (kidsLine || stage1) out.push([exams ? '考試說明' : '初試', [kidsLine, stage1].filter(Boolean).join('\n')]);
     if (r.stage2 && !(sumFull && !exams)) out.push(['複試', r.stage2]);
     if (dates.length) out.push(['重要日期', dates.map(function (x) { return x[0] + ' ' + fmt(String(x[1])); }).join('\n')]);
-    if (d.remarks.length) out.push(['備註', d.remarks.join('\n')]);
+    var rm = d.remarks.filter(function (s) { return !EXAM_QUOTA.test(String(s).trim()); });
+    if (rm.length) out.push(['備註', rm.join('\n')]);
     if (r.start !== d.g.start || r.end !== d.g.end) out.push(['報名期間', fmt(r.start) + ' – ' + fmt(r.end)]);
     return out;
+  }
+
+  // D192:自動備註「名額含甄試名額 N 名」→ 名額旁顯示「含甄試 N」,備註不再重複
+  var EXAM_QUOTA = /^名額含甄試名額 (\d+) 名$/;
+  function examQuota(d) {
+    var hit = (d.remarks || []).map(function (s) { return String(s).trim().match(EXAM_QUOTA); }).filter(Boolean)[0];
+    return hit ? Number(hit[1]) : 0;
   }
 
   function highlight(text, q) {
@@ -789,7 +847,7 @@ window.TBEngine = (function () {
     optionsFor: optionsFor, availableFields: availableFields, addRule: addRule, removeRule: removeRule, ruleOf: ruleOf, fieldRule: fieldRule,
     applyPreset: applyPreset, presets: presets, clearAll: clearAll, toggleValue: toggleValue, ruleText: ruleText, hasValue: hasValue, emptyValue: emptyValue,
     summary: summary, summaryLine: summaryLine, quotaParts: quotaParts, detail: detail, OP_NAMES: OP_NAMES,
-    opButtons: opButtons, valueEditor: valueEditor, editorClick: editorClick, editorInput: editorInput, pruneEmpty: pruneEmpty, highlight: highlight, brochureUrl: brochureUrl,
+    opButtons: opButtons, valueEditor: valueEditor, editorClick: editorClick, editorInput: editorInput, pruneEmpty: pruneEmpty, highlight: highlight, brochureUrl: brochureUrl, examQuota: examQuota,
     isFav: isFav, toggleFav: toggleFav, favCount: favCount, shareFav: shareFav, copy: copy,
     saveSet: saveSet, removeSaved: removeSaved, savedSets: savedSets, syncHash: syncHash, hash: hash, shownFields: shownFields, defaultShownFields: defaultShownFields, setShownFields: setShownFields,
     channelStats: channelStats, channelYears: function () { return channelYears(st.channel); },
@@ -996,7 +1054,9 @@ window.TBEngine = (function () {
   function quotaHtml(d) {
     var parts = E.quotaParts(d), main = parts.filter(function (p) { return p.main; }), extra = parts.filter(function (p) { return !p.main; });
     return (main.length ? '<b>' + esc(main.map(function (p) { return p.quota; }).join('+')) + '</b><small> 名</small>' : '<small>–</small>') +
-      extra.map(function (p) { return '<em>' + esc(p.identity + ' ' + p.quota) + '</em>'; }).join('');
+      extra.map(function (p) { return '<em>' + esc(p.identity + ' ' + p.quota) + '</em>'; }).join('') +
+      // D192:研究所一般生名額含甄試名額(成大),名額照簡章、旁邊註明
+      (E.examQuota(d) ? '<em title="名額含研究所甄試名額 ' + E.examQuota(d) + ' 名;甄試缺額會流用回一般生">含甄試 ' + E.examQuota(d) + '</em>' : '');
   }
   function cmpBtn(d, cls) {
     var on = !!ui.pick[d.key], full = !on && ui.pickOrder.length >= MAX_CMP;
