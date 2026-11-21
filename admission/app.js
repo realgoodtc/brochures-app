@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-18T08:13:23.392Z
+ * 產生時間:2026-11-21T07:31:51.325Z
  */
 (function () {
   'use strict';
@@ -564,6 +564,8 @@ window.TBEngine = (function () {
               return p.length > 1 && labelKids(x).length > 1 ? '(' + t + ')' : t;
             }).join('或') + (p.length > 1 ? '(任選一組)' : '(任選一)') + w(p[0]) + dt(p[0]);
           }
+          // D219:不同類別的考法擇一(彰師「筆試或資料審查二擇一,各 100%」)
+          if (mixedChoice(p)) return p.map(function (x) { return x[1] + kidsText(x); }).join('或') + choiceWord(p.length) + (w(p[0]) ? '，各' + w(p[0]) : '') + dt(p[0]);
           return p.map(function (x) { return x[1] + kidsText(x); }).join('或') + '(任選一)' + w(p[0]) + dt(p[0]);
         }
         return p[1] + w(p) + dt(p) + kidsText(p);
@@ -591,8 +593,8 @@ window.TBEngine = (function () {
       var entries = [], seen = {};
       list.forEach(function (x) {
         if (x[5]) {
-          if (seen[x[5]]) { seen[x[5]].cats = seen[x[5]].cats.concat(kidCats(x, exams)); return; }
-          seen[x[5]] = { cats: kidCats(x, exams), w: x[2], u: x[3] };
+          if (seen[x[5]]) { seen[x[5]].cats = seen[x[5]].cats.concat(kidCats(x, exams)); seen[x[5]].members.push(catKey(kidCats(x, exams))); return; }
+          seen[x[5]] = { cats: kidCats(x, exams), w: x[2], u: x[3], members: [catKey(kidCats(x, exams))] };
           entries.push(seen[x[5]]);
           return;
         }
@@ -602,14 +604,22 @@ window.TBEngine = (function () {
       // 類別固定照「筆試、書審、面試、術科」排,各系看起來一致
       entries.sort(function (a, b) { return catRank(a.cats) - catRank(b.cats); });
       entries.forEach(function (e) {
-        var k = CAT_ORDER.filter(function (c) { return e.cats.indexOf(c) >= 0; }).join('+') || '筆試';
+        var distinct = e.members ? e.members.filter(function (m, i) { return e.members.indexOf(m) === i; }) : [];
+        var k = distinct.length > 1 ? distinct.join('或') + choiceWord(distinct.length) : catKey(e.cats);
         if (!sums[k]) { sums[k] = { w: 0, ok: true }; order.push(k); }
         if (e.u === '%' && typeof e.w === 'number') sums[k].w += e.w; else sums[k].ok = false;
       });
-      return order.map(function (k) { return k + (sums[k].ok && sums[k].w ? ' ' + Math.round(sums[k].w * 100) / 100 + '%' : ''); }).join('、');
+      return order.map(function (k) { return k + (sums[k].ok && sums[k].w ? (/擇一$/.test(k) ? '，各 ' : ' ') + Math.round(sums[k].w * 100) / 100 + '%' : ''); }).join('、');
     });
     return parts.length > 1 ? '第一階段 ' + parts[0] + '／第二階段 ' + parts[1] : parts[0];
   }
+  function catKey(cats) { return CAT_ORDER.filter(function (c) { return cats.indexOf(c) >= 0; }).join('+') || '筆試'; }
+  // D219:任選組的選項類別不同(筆試、書審)時是「考法擇一」,寫成「N擇一,各」
+  function mixedChoice(p) {
+    var keys = p.map(function (x) { return catKey(catsOf(x)); });
+    return keys.some(function (k) { return k !== keys[0]; });
+  }
+  function choiceWord(n) { return ('一二三四五六七八九'.charAt(n - 1) || n) + '擇一'; }
   function catRank(cats) { var i = CAT_ORDER.map(function (c) { return cats.indexOf(c) >= 0; }).indexOf(true); return i < 0 ? 0 : i; }
   // 任選組的選項是「選項1」這類標籤時,類別看組內科目
   function kidCats(x, exams) {
@@ -859,7 +869,7 @@ window.TBEngine = (function () {
 
   if (root.getAttribute('data-consult')) window.TBEngine.CONSULT_URL = root.getAttribute('data-consult');
 
-﻿/* J 版(2026-11-17,使用者:以「電腦手機版面3」的樣式為基底,加上其他版面的功能優點)
+/* J 版(2026-11-17,使用者:以「電腦手機版面3」的樣式為基底,加上其他版面的功能優點)
    外觀與架構取自版面 3:上方控制卡(管道膠囊、搜尋、報名狀態、排序、立即洽詢)、白底圓角比較表格、青綠主色、黑體。
    功能取自其他版:篩選條件與選項筆數(B/F,改成下拉式)、考試方式只考勾選項目與同時符合/符合任一(H)、報名狀態筆數(G)、
    依學校分組與學校標題(H)、依學校/依校系、收藏與分享收藏(H)、並排比較表(D/F)、原地展開(版面 3)、
@@ -929,10 +939,11 @@ window.TBEngine = (function () {
   function renderPicker() { el('tb-picker').innerHTML = ''; }
 
   function modeHtml(key, rule) {
-    var f = E.FIELDS[key];
-    if (f.ops.length < 2) return '';
-    var names = { any: '包含', not: '排除', all: '同時符合', has: '包含', hasNot: '不包含', gte: '至少', lte: '不超過', between: '介於', overlap: '重疊', endBy: '截止前', startFrom: '開始後' };
-    return '<div class="b-mode" data-mode="' + key + '"' + (rule ? '' : ' hidden') + '>' + f.ops.map(function (o) {
+    // 不提供「排除 / 不包含」(使用者 2026-11-18:沒勾就代表不要,排除多此一舉)
+    var ops = E.FIELDS[key].ops.filter(function (o) { return o[0] !== 'not' && o[0] !== 'hasNot'; });
+    if (ops.length < 2) return '';
+    var names = { any: '包含', all: '同時符合', has: '包含', gte: '至少', lte: '不超過', between: '介於', overlap: '重疊', endBy: '截止前', startFrom: '開始後' };
+    return '<div class="b-mode" data-mode="' + key + '"' + (rule ? '' : ' hidden') + '>' + ops.map(function (o) {
       return '<button type="button" data-setop="' + o[0] + '" aria-pressed="' + (!!rule && rule.op === o[0]) + '">' + names[o[0]] + '</button>';
     }).join('') + '</div>';
   }
