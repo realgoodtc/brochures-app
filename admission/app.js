@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-22T04:31:02.016Z
+ * 產生時間:2026-11-22T09:38:40.974Z
  */
 (function () {
   'use strict';
@@ -1087,7 +1087,9 @@ window.TBEngine = (function () {
     var exam = E.summaryLine(d, 80).text;
     // D189:聯招(台聯大)標在系名後面;報名日期和學校卡片不同時,列在年級後面
     var jointWhen = d.joint && !g.fallback && (d.start !== g.start || d.end !== g.end) ? '聯招報名 ' + E.fmtShort(d.start) + ' – ' + E.fmtShort(d.end) : '';
-    var sub = [d.grade, jointWhen].filter(Boolean).map(esc).join(' · ') + (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '');
+    var sub = [d.grade, jointWhen].filter(Boolean).map(esc).join(' · ') + (!g.fallback && d.rows.some(function (r) { return r.isNew === 1; }) ? '<span class="f-new">新增</span>' : '') +
+      // D239:考試科目和前一學年度不同(補顯示的前一年度資料不標)
+      (!g.fallback && d.rows.some(function (r) { return r.examChg === 1; }) ? '<span class="f-new">考試科目與去年不同</span>' : '');
     // 整列可點:電腦原地展開資格與備註,手機從底部滑出詳情;比較、收藏按鈕在最右欄
     return '<li class="b-dept i-row' + (ui.pick[d.key] ? ' is-picked' : '') + (open ? ' is-open' : '') + '">' +
       '<div class="i-grid"' + (info.length ? ' data-open="' + esc(d.key) + '" role="button" tabindex="0" aria-expanded="' + open + '"' : '') + '>' +
