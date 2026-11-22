@@ -1,7 +1,7 @@
 /*!
  * 升學簡章查詢(正式前台,J 版)— 由 tools/build_site_app.js 從 web/preview/compare/ 的 engine.js、j/j.js 產生,請勿直接修改。
  * 掛載點:<div id="admission-brochures-app" data-base="資料網址/" [data-consult="洽詢連結"]></div>
- * 產生時間:2026-11-21T07:31:51.325Z
+ * 產生時間:2026-11-22T04:31:02.016Z
  */
 (function () {
   'use strict';
@@ -516,7 +516,7 @@ window.TBEngine = (function () {
   // topOnly:只列第一層(列表摘要用,子項配分放到「考試說明」,使用者 2026-11-17)
   function examsText(exams, topOnly) {
     if (!exams || !exams.length) return '';
-    var w = function (x) { return x[2] === null || x[2] === undefined ? '' : (x[3] === '%' ? ' ' + x[2] + '%' : (x[3] === '倍' ? ' ×' + x[2] : ' ' + x[2])); };
+    var w = function (x) { return x[2] === null || x[2] === undefined ? '' : (x[3] === '%' ? ' ' + x[2] + '%' : (x[3] === '倍' ? ' ×' + x[2] : (x[3] === '分' ? ' ' + x[2] + ' 分' : ' ' + x[2]))); };
     var dt = function (x) { return x[4] && String(x[4]).length === 8 ? '(' + Number(String(x[4]).slice(4, 6)) + '/' + Number(String(x[4]).slice(6)) + ')' : ''; };
     var stages = [1, 2].map(function (s) { return exams.filter(function (x) { return x[0] === s; }); }).filter(function (a) { return a.length; });
     var partsText = function (list, all) {
